@@ -7,8 +7,8 @@ RePair is proposed in
 
 > N. Jesper Larsson and Alistair Moffat: _Off-line dictionary-based compression._ Proceedings of the IEEE, 88(11):1722-1732, 2000.
 
-This code constructs only a grammar.
-Encoding process is unimplemented yet.
+<!-- This code constructs only a grammar. -->
+<!-- Encoding process is unimplemented yet. -->
 
 ### Download
 

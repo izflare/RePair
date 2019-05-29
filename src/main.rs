@@ -17,7 +17,7 @@ fn main() {
         //{{{
         .version("0.1.0")                       
         .author("flare")     
-        .about("RePair Compressor")
+        .about("RePair compressor")
         .arg(Arg::with_name("input")
             .help("input sourse text file") 
             .short("i")
@@ -29,6 +29,12 @@ fn main() {
             .help("decompression")
             .short("d")
             .long("dcp")
+        )
+        .arg(Arg::with_name("minfreq")
+            .help("Minimum frequency")
+            .short("m")
+            .long("min")
+            .takes_value(true)
         )
         .arg(Arg::with_name("print")
             .help("print the detail of constructed grammar")
@@ -50,13 +56,13 @@ fn main() {
         // preprocessing
         // 終端記号を変数に置換して，文字列を配列に格納
         // each tuple is (0: char, 1: prev, 2: next)
-        let mut a: Vec<(Option<usize>, Option<usize>, Option<usize>)> = vec![(None, None, None); s.len()]; 
+        let mut a: Vec<(Option<u32>, Option<usize>, Option<usize>)> = vec![(None, None, None); s.len()]; 
         let mut z: Vec<u8> = Vec::new();
         //{{{
         {
             // let mut d: HashMap<char, usize> = HashMap::new();
-            let mut d: HashMap<u8, usize> = HashMap::new();
-            let mut x: usize = 1;
+            let mut d: HashMap<u8, u32> = HashMap::new();
+            let mut x = 1;
             for i in 0..s.len() {
                 if d.contains_key(&s[i]) {
                     let e = d.get(&s[i]);
@@ -73,7 +79,7 @@ fn main() {
 
         // a の関数
         // 右隣の空でない要素の番号を取得
-        fn get_rt(a: &Vec<(Option<usize>, Option<usize>, Option<usize>)>, i: usize) -> usize {
+        fn get_rt(a: &Vec<(Option<u32>, Option<usize>, Option<usize>)>, i: usize) -> usize {
             //{{{
             if a[i+1].0 == None {
                 match a[i+1].2 {Some(x) => x, None => 0}
@@ -85,7 +91,7 @@ fn main() {
         }
 
         // 左隣の空でない要素の番号を取得
-        fn get_lt(a: &Vec<(Option<usize>, Option<usize>, Option<usize>)>, i: usize) -> usize {
+        fn get_lt(a: &Vec<(Option<u32>, Option<usize>, Option<usize>)>, i: usize) -> usize {
             //{{{
             if a[i-1].0 == None {
                 a[i-1].1.unwrap()
@@ -97,7 +103,7 @@ fn main() {
         }
 
         // bigramを取得
-        fn get_bg(a: &Vec<(Option<usize>, Option<usize>, Option<usize>)>, i: usize) -> (usize, usize) {
+        fn get_bg(a: &Vec<(Option<u32>, Option<usize>, Option<usize>)>, i: usize) -> (u32, u32) {
             //{{{
             (a[i].0.unwrap(), a[get_rt(&a, i)].0.unwrap())
             //}}}
@@ -107,9 +113,9 @@ fn main() {
 
         // bigramの位置をつなぎながらハッシュ表を作成
         struct Rec {loc: usize, freq: usize, prev: Option<*mut Rec>, next: Option<*mut Rec>};
-        let mut h: HashMap<(usize, usize), *mut Rec> = HashMap::new();
+        let mut h: HashMap<(u32, u32), *mut Rec> = HashMap::new();
         let mut f: usize = 1;
-        let mut k: Vec<(usize, usize)> = Vec::new();
+        let mut k: Vec<(u32, u32)> = Vec::new();
         //{{{
         for i in (0..s.len()-1).rev() {
             let b = (a[i].0.unwrap(), a[i+1].0.unwrap());
@@ -186,9 +192,9 @@ fn main() {
 
         // algorithm
         let mut v: usize = z.len() + 1;
-        let mut g: Vec<(usize, usize)> = Vec::new();
+        let mut g: Vec<(u32, u32)> = Vec::new();
 
-        while f > 12 {
+        while f >= std::cmp::max(2, match matches.value_of("minfreq") {Some(x) => (*x).parse::<usize>().unwrap(), None => 2,}) {
             if q[f] == None {f -= 1; continue;}
             unsafe {
                 // 最頻出ペアを同定
@@ -207,7 +213,7 @@ fn main() {
                     if i > 0 && !o {
                         //{{{
                         let lt_i = get_lt(&a, i);
-                        let lt_b: (usize, usize) = get_bg(&a, lt_i);
+                        let lt_b: (u32, u32) = get_bg(&a, lt_i);
                         let mut lt_r: &mut Rec = &mut **h.get(&lt_b).unwrap();
                         match a[lt_i].1 {Some(x) => a[x].2 = a[lt_i].2, None => ()}
                         match a[lt_i].2 {Some(x) => a[x].1 = a[lt_i].1, None => ()}
@@ -222,7 +228,7 @@ fn main() {
                     // 左隣のペアの頻度をデクリメント
                     if i < a.len()-1 && rt_i != 0 && rt_i < a.len()-1 && get_rt(&a, rt_i) != 0 {
                         //{{{
-                        let rt_b: (usize, usize) = get_bg(&a, rt_i);
+                        let rt_b: (u32, u32) = get_bg(&a, rt_i);
                         match a[i].2 {
                             Some(x) => {
                                 // fully overlap
@@ -274,7 +280,7 @@ fn main() {
                         //}}}
                     }
 
-                    a[i].0 = Some(v);
+                    a[i].0 = Some(v as u32);
                     a[rt_i].0 = None;
                     if a[i].2 == None {break;}
                     i = a[i].2.unwrap();
@@ -288,7 +294,7 @@ fn main() {
                     // 右隣のペアの頻度をインクリメント
                     if i < a.len()-1 && get_rt(&a, i) != 0 && !o {
                         //{{{
-                        let rt_b: (usize, usize) = get_bg(&a, i);
+                        let rt_b: (u32, u32) = get_bg(&a, i);
                         if h.contains_key(&rt_b) {
                             let mut rt_r: &mut Rec = &mut **h.get(&rt_b).unwrap();
                             a[rt_r.loc].1 = Some(i);
@@ -315,7 +321,7 @@ fn main() {
                         let lt_i = get_lt(&a, i);
                         o = match a[i].1 {Some(x) => if x == lt_i {true} else {false}, None => false};
                         if o && get_bg(&a, lt_i) == get_bg(&a, i) {pair_overlap = true;}
-                        let lt_b: (usize, usize) = get_bg(&a, lt_i);
+                        let lt_b: (u32, u32) = get_bg(&a, lt_i);
                         if h.contains_key(&lt_b) {
                             let mut lt_r: &mut Rec = &mut **h.get(&lt_b).unwrap();
                             a[lt_r.loc].1 = Some(lt_i);
@@ -345,16 +351,17 @@ fn main() {
                 }
 
                 v += 1;
+                if v >= std::u32::MAX as usize {break;}
                 h.remove(&b);
             }
         }
 
         let end = start.elapsed();
-        let mut s: Vec<usize> = Vec::new();
+        let mut s: Vec<u32> = Vec::new();
 
         // encode & output
-        let mut w: Vec<usize> = Vec::new();
-        for e in &z {w.push(*e as usize);}
+        let mut w: Vec<u32> = Vec::new();
+        for e in &z {w.push(*e as u32);}
         w.push(0);
         for e in &g {w.push(e.0); w.push(e.1)}
         w.push(0);
@@ -365,6 +372,7 @@ fn main() {
         f.write(&bv.to_bytes()).unwrap();
 
         // print
+        //{{{
         println!("[Result]");
         println!("alphabet size   : {:?}", z.len());
         println!("rule number     : {:?}", g.len());
@@ -379,15 +387,17 @@ fn main() {
             println!("sequence   :\n {:?}", s);
         }
         //}}}
+
+        //}}}
     }
     else {
         //{{{
         let bv: BitVec = BitVec::from_bytes(&s);
-        let mut v: Vec<usize> = Vec::new();
+        let mut v: Vec<u32> = Vec::new();
         huffman_coding::decode(&bv, &mut v);
 
         let mut z: Vec<u8> = Vec::new();
-        let mut g: Vec<(usize, usize)> = Vec::new();
+        let mut g: Vec<(u32, u32)> = Vec::new();
 
         let mut i = 0;
         let mut mode = 0;
@@ -399,19 +409,19 @@ fn main() {
         }
 
         let mut u: Vec<u8> = Vec::new();
-        fn drv(i: usize, z: &Vec<u8>, g: &Vec<(usize, usize)>, u: &mut Vec<u8>) -> () {
+        fn drv(i: usize, z: &Vec<u8>, g: &Vec<(u32, u32)>, u: &mut Vec<u8>) -> () {
             if i <= z.len() {
                 u.push(z[i - 1]);
             }
             else {
                 let bg = g[i - z.len() - 1];
-                drv(bg.0, z, g, u);
-                drv(bg.1, z, g, u);
+                drv(bg.0 as usize, z, g, u);
+                drv(bg.1 as usize, z, g, u);
             }
         }
         loop {
             if i > v.len() - 1 {break;}
-            drv(v[i], &z, &g, &mut u);
+            drv(v[i] as usize, &z, &g, &mut u);
             i += 1;
         }
 

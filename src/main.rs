@@ -1,6 +1,6 @@
 extern crate clap;
 extern crate bit_vec;
-extern crate hc;
+extern crate rp;
 
 use clap::{App, Arg};
 use std::io::{prelude::*, BufReader, BufWriter};
@@ -8,7 +8,7 @@ use std::fs::File;
 use std::collections::HashMap;
 use std::time::Instant;
 use bit_vec::BitVec;
-use hc::huffman_coding;
+use rp::poppt;
 
 fn main() {
 
@@ -358,16 +358,10 @@ fn main() {
 
         let end = start.elapsed();
         let mut s: Vec<u32> = Vec::new();
+        for c in &a {match (*c).0 {Some(x) => s.push(x), None => ()}}
 
-        // encode & output
-        let mut w: Vec<u32> = Vec::new();
-        for e in &z {w.push(*e as u32);}
-        w.push(0);
-        for e in &g {w.push(e.0); w.push(e.1)}
-        w.push(0);
-        for c in &a {match (*c).0 {Some(x) => {s.push(x); w.push(x)}, None => ()}}
         let mut bv: BitVec = BitVec::new();
-        huffman_coding::encode(&w, &mut bv);
+        poppt::encode(&z, &g, &s, &mut bv);
         let mut f = BufWriter::new(File::create(matches.value_of("input").unwrap().to_owned()+".rp").unwrap());
         f.write(&bv.to_bytes()).unwrap();
 
@@ -391,43 +385,12 @@ fn main() {
         //}}}
     }
     else {
-        //{{{
         let bv: BitVec = BitVec::from_bytes(&s);
-        let mut v: Vec<u32> = Vec::new();
-        huffman_coding::decode(&bv, &mut v);
-
-        let mut z: Vec<u8> = Vec::new();
-        let mut g: Vec<(u32, u32)> = Vec::new();
-
-        let mut i = 0;
-        let mut mode = 0;
-        loop {
-            if (i >= v.len()) || (mode >= 2) {break;}
-            if v[i] == 0 {mode += 1; i += 1;}
-            else if mode == 0 {z.push(v[i] as u8); i += 1;}
-            else {g.push((v[i], v[i + 1])); i += 2;}
-        }
-
         let mut u: Vec<u8> = Vec::new();
-        fn drv(i: usize, z: &Vec<u8>, g: &Vec<(u32, u32)>, u: &mut Vec<u8>) -> () {
-            if i <= z.len() {
-                u.push(z[i - 1]);
-            }
-            else {
-                let bg = g[i - z.len() - 1];
-                drv(bg.0 as usize, z, g, u);
-                drv(bg.1 as usize, z, g, u);
-            }
-        }
-        loop {
-            if i > v.len() - 1 {break;}
-            drv(v[i] as usize, &z, &g, &mut u);
-            i += 1;
-        }
+        poppt::decode(&bv, &mut u);
 
         let mut f = BufWriter::new(File::create(matches.value_of("input").unwrap().to_owned()+".dcp").unwrap());
         f.write(&u).unwrap();
-        //}}}
     }
 
 }

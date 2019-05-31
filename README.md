@@ -17,7 +17,7 @@ git clone https://github.com/izflare/RePair.git
 
 ### Compile
 
-This code has been tested under linux compiling with rust (cargo) ver 1.33.0.  
+This code has been tested under linux compiling with rust (cargo) ver 1.34.0.  
 After download the repository, 
 
 ```
@@ -35,6 +35,5 @@ cd target/release
 ```
 
 `<input>` is your input text data file.  
-Size of constructed grammar and elapsed time for running will be displayed.  
 If you execute with `--print` option, constructed grammar will also be displayed.
 

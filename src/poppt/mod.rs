@@ -1,10 +1,11 @@
 extern crate bit_vec;
-extern crate hc;
+
 use bit_vec::BitVec;
-use hc::huffman_coding;
+use std::time::Instant;
 
 pub fn encode(z: &Vec<u8>, g: &Vec<(u32, u32)>, s: &Vec<u32>, bv: &mut BitVec) -> () {
     //{{{
+    let start = Instant::now();
 
     let mut b: BitVec = BitVec::new();
     let mut l: Vec<u32> = Vec::new();
@@ -43,65 +44,78 @@ pub fn encode(z: &Vec<u8>, g: &Vec<(u32, u32)>, s: &Vec<u32>, bv: &mut BitVec) -
     }
     b.push(true);
 
-    fn u32_to_bv(x: u32, bv: &mut BitVec) -> () {
+    let logn = std::usize::MAX.count_ones() - l.len().leading_zeros();
+    fn u_to_bv(x: u32, logn: u32, bv: &mut BitVec) -> () {
         //{{{
         let mut z = x;
-        for _ in 0..32 {
+        z = z.rotate_right(logn);
+        for _ in 0..logn {
             z = z.rotate_left(1);
             bv.push(z % 2 == 1);
         }
         //}}}
     }
-    for _ in 0..(7 - (b.len() % 8)) {bv.push(false);}
-    bv.push(true);
-    u32_to_bv(b.len() as u32, bv);
     for bit in &b {bv.push(bit);}
+    for e in z {u_to_bv(*e as u32, 8, bv);}
+    u_to_bv(0, 8, bv);
+    u_to_bv(logn, 8, bv);
+    for e in &l {u_to_bv(*e, logn, bv);}
+    let end = start.elapsed();
 
-    let mut w: Vec<u32> = Vec::new();
-    for e in z {w.push(*e as u32);}
-    w.push(0);
-    w.append(&mut l);
-    let mut encoded: BitVec = BitVec::new();
-    huffman_coding::encode(&w, &mut encoded);
-    for bit in &encoded {bv.push(bit);}
+    println!("[Result: bit encoding]");
+    println!("B length          : {:?} [bits]", b.len());
+    println!("L length          : {:?} [words]", l.len());
+    println!("log (n + sigma)   : {:?}", logn);
+    println!("{}.{:03} sec elapsed", end.as_secs(), end.subsec_nanos()/1_000_000);
+
     //}}}
 }
 
-pub fn decode(bv: &BitVec, u: &mut Vec<u8>) -> () {
+pub fn decode(bv: &BitVec, w: &mut Vec<u8>) -> () {
     //{{{
     
-    let mut mode = 0;
+    let mut mode = 1;
     let mut t = 0;
     let mut i = 0;
     let mut b: BitVec = BitVec::new();
-    let mut w: Vec<u32> = Vec::new();
-    let mut d: BitVec = BitVec::new();
+    let mut u: u32 = 0;
+    let mut z: Vec<u8> = Vec::new();
+    let mut logn: u32 = 0;
+    let mut l: Vec<u32> = Vec::new();
     for bit in bv {
-        if mode == 0 && bit {mode = 1;}
-        else if mode == 1 {
-            if i < 32 {t <<= 1; if bit {t += 1;} i += 1;}
-            else {
-                if t > 0 {b.push(bit); t -= 1;}
-                else {mode = 2;}
+        if mode == 1 {
+            b.push(bit);
+            if bit {t -= 1;} else {t += 1;}
+            if t == 0 {mode = 2;}
+        }
+        else if mode == 2 {
+            u <<= 1; if bit {u += 1;} i += 1;
+            if i >= 8 {
+                if u == 0 {mode = 3; i = 0;}
+                else {z.push(u as u8); u = 0; i = 0;}
             }
         }
-        else {d.push(bit);}
+        else if mode == 3 {
+            u <<= 1; if bit {u += 1;} i += 1;
+            if i >= 8 {logn = u as u32; u = 0; mode = 4; i = 0;}
+        }
+        else {
+            u <<= 1; if bit {u += 1;} i += 1;
+            if i >= logn {l.push(u as u32); u = 0; i = 0;}
+        }
     }
-    huffman_coding::decode(&d, &mut w);
-
-    let mut z: Vec<u8> = Vec::new();
-    for e in &w {if *e == 0 {break;} z.push(*e as u8)}
+    
     let mut dec_g: Vec<(u32, u32)> = Vec::new();
-    fn dec_drv(x: u32, dec_g: &Vec<(u32, u32)>, z: &Vec<u8>, u: &mut Vec<u8>) -> () {
-        if x as usize <= z.len() {u.push(z[x as usize -1]);}
+    fn dec_drv(x: u32, dec_g: &Vec<(u32, u32)>, z: &Vec<u8>, w: &mut Vec<u8>) -> () {
+        if x as usize <= z.len() {w.push(z[x as usize -1]);}
         else {
             let bg = dec_g[x as usize - z.len() -1];
-            dec_drv(bg.0, dec_g, z, u);
-            dec_drv(bg.1, dec_g, z, u);
+            dec_drv(bg.0, dec_g, z, w);
+            dec_drv(bg.1, dec_g, z, w);
         }
     }
 
-    let mut dec_i = z.len() + 1;
+    let mut dec_i = 0;
     let mut dec_x = z.len() as u32 + 1;
     let mut stack: Vec<u32> = Vec::new();
     for dec_b in &b {
@@ -115,8 +129,8 @@ pub fn decode(bv: &BitVec, u: &mut Vec<u8>) -> () {
             dec_x += 1;
         }
         else {
-            stack.push(w[dec_i]);
-            dec_drv(w[dec_i], &dec_g, &z, u);
+            stack.push(l[dec_i]);
+            dec_drv(l[dec_i], &dec_g, &z, w);
             dec_i += 1;
         }
     }

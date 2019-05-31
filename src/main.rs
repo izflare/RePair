@@ -360,27 +360,31 @@ fn main() {
         let mut s: Vec<u32> = Vec::new();
         for c in &a {match (*c).0 {Some(x) => s.push(x), None => ()}}
 
+        // print
+        println!("[Result: grammar construction]");
+        println!("Alphabet size     : {:?}", z.len());
+        println!("Rule number       : {:?}", g.len());
+        println!("Dictionary size   : {:?}", g.len() * 2);
+        println!("Sequence length   : {:?}", s.len());
+        println!("Total size        : {:?}", z.len() + g.len() * 2 + s.len());
+        println!("{}.{:03} sec elapsed", end.as_secs(), end.subsec_nanos()/1_000_000);
+
+        // encode
         let mut bv: BitVec = BitVec::new();
         poppt::encode(&z, &g, &s, &mut bv);
         let mut f = BufWriter::new(File::create(matches.value_of("input").unwrap().to_owned()+".rp").unwrap());
         f.write(&bv.to_bytes()).unwrap();
 
-        // print
-        //{{{
-        println!("[Result]");
-        println!("alphabet size   : {:?}", z.len());
-        println!("rule number     : {:?}", g.len());
-        println!("dictionary size : {:?}", g.len() * 2);
-        println!("sequence length : {:?}", s.len());
-        println!("total size      : {:?}", z.len() + g.len() * 2 + s.len());
-        println!("{}.{:03} sec elapsed", end.as_secs(), end.subsec_nanos()/1_000_000);
+        println!("[Result: compression]");
+        println!("Input data        : {:?} [bytes]", a.len());
+        println!("Compressed data   : {:?} [bytes]", bv.len() / 8);
+        println!("Compression ratio : {:.3} [%]", 100.0 - 100.0 * bv.len() as f64 / 8.0 / a.len() as f64);
         if matches.is_present("print") {
             println!("\n[Grammar detail]");
-            println!("alphabet   :\n {:?}", z);
-            println!("dictionary :\n {:?}", g);
-            println!("sequence   :\n {:?}", s);
+            println!("Alphabet   :\n {:?}", z);
+            println!("Dictionary :\n {:?}", g);
+            println!("Sequence   :\n {:?}", s);
         }
-        //}}}
 
         //}}}
     }

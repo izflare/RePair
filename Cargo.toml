@@ -7,4 +7,3 @@ edition = "2018"
 [dependencies]
 clap = "2.20.3"
 bit-vec = "0.5.0"
-hc = {git = "https://github.com/izflare/Huffman-coding.git"}

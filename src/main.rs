@@ -370,7 +370,7 @@ fn main() {
 
         // encode
         let mut bv: BitVec = BitVec::new();
-        delta::encode(&z, &g, &s, &mut bv);
+        delta::encode(&z, &g, &mut s, &mut bv);
         let mut f = BufWriter::new(File::create(matches.value_of("input").unwrap().to_owned()+".rp").unwrap());
         f.write(&bv.to_bytes()).unwrap();
 
@@ -387,9 +387,9 @@ fn main() {
 
     }
     else {
-        let bv: BitVec = BitVec::from_bytes(&s);
+        let mut bv: BitVec = BitVec::from_bytes(&s);
         let mut u: Vec<u8> = Vec::new();
-        delta::decode(&bv, &mut u);
+        delta::decode(&mut bv, &mut u);
 
         let mut f = BufWriter::new(File::create(matches.value_of("input").unwrap().to_owned()+".dcp").unwrap());
         f.write(&u).unwrap();

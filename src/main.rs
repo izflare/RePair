@@ -8,7 +8,7 @@ use std::fs::File;
 use std::collections::HashMap;
 use std::time::Instant;
 use bit_vec::BitVec;
-use rp::poppt;
+use rp::delta;
 
 fn main() {
 
@@ -50,7 +50,6 @@ fn main() {
     f.read_to_end(&mut s).expect("Unable to read");
 
     if !matches.is_present("decompress") {
-        //{{{
         let start = Instant::now();
 
         // preprocessing
@@ -371,7 +370,7 @@ fn main() {
 
         // encode
         let mut bv: BitVec = BitVec::new();
-        poppt::encode(&z, &g, &s, &mut bv);
+        delta::encode(&z, &g, &s, &mut bv);
         let mut f = BufWriter::new(File::create(matches.value_of("input").unwrap().to_owned()+".rp").unwrap());
         f.write(&bv.to_bytes()).unwrap();
 
@@ -386,12 +385,11 @@ fn main() {
             println!("Sequence   :\n {:?}", s);
         }
 
-        //}}}
     }
     else {
         let bv: BitVec = BitVec::from_bytes(&s);
         let mut u: Vec<u8> = Vec::new();
-        poppt::decode(&bv, &mut u);
+        delta::decode(&bv, &mut u);
 
         let mut f = BufWriter::new(File::create(matches.value_of("input").unwrap().to_owned()+".dcp").unwrap());
         f.write(&u).unwrap();

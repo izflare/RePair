@@ -3,7 +3,7 @@ extern crate strlib;
 
 use bit_vec::BitVec;
 use std::time::Instant;
-use strlib::delta;
+use strlib::gamma;
 
 pub fn encode(z: &Vec<u8>, g: &Vec<(u32, u32)>, s: &mut Vec<u32>, bv: &mut BitVec) -> () {
     let start = Instant::now();
@@ -23,7 +23,7 @@ pub fn encode(z: &Vec<u8>, g: &Vec<(u32, u32)>, s: &mut Vec<u32>, bv: &mut BitVe
 
     u_to_bv(z.len() as u32, 8, bv);
     u_to_bv(g.len() as u32, 32, bv);
-    delta::encode(&v, bv);
+    gamma::encode(&v, bv);
     let end = start.elapsed();
 
     println!("[Result: bit encoding]");
@@ -47,7 +47,7 @@ pub fn decode(bv: &mut BitVec, w: &mut Vec<u8>) -> () {
         }
         else {d.push(bv[i]);}
     }
-    delta::decode(&d, &mut v);
+    gamma::decode(&d, &mut v);
 
     let mut z: Vec<u8> = Vec::new();
     let mut g: Vec<(u32, u32)> = Vec::new();

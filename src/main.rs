@@ -138,7 +138,8 @@ fn main() {
         //}}}
 
         // 頻度表を作成
-        let mut q: Vec<Option<*mut Rec>> = vec![None; f+1];
+        // (head, tail)
+        let mut q: Vec<(Option<*mut Rec>, Option<*mut Rec>)> = vec![(None, None); f+1];
         //{{{
         for e in &k {
             let v = h.get(e).unwrap();
@@ -150,10 +151,10 @@ fn main() {
 
         // q の関数
         // Record をリストから切り離す
-        fn out_rec(q: &mut Vec<Option<*mut Rec>>, r: &mut Rec) {
+        fn out_rec(q: &mut Vec<(Option<*mut Rec>, Option<*mut Rec>)>, r: &mut Rec) {
             //{{{
             if r.prev == None {
-                q[r.freq] = r.next;
+                q[r.freq].0 = r.next;
             }
             else {
                 unsafe {
@@ -162,7 +163,10 @@ fn main() {
                 }
             }
 
-            if r.next != None {
+            if r.next == None {
+                q[r.freq].1 = r.prev;
+            }
+            else {
                 unsafe {
                     let nx: &mut Rec = &mut *r.next.unwrap();
                     nx.prev = r.prev;
@@ -173,18 +177,23 @@ fn main() {
             //}}}
         }
 
-        // Record をリストの先頭に追加
-        fn in_rec(q: &mut Vec<Option<*mut Rec>>, r: &mut Rec) {
+        // Record をリストの末尾に追加
+        fn in_rec(q: &mut Vec<(Option<*mut Rec>, Option<*mut Rec>)>, r: &mut Rec) {
             //{{{
             let ptr: *mut Rec = &mut *r;
-            if q[r.freq] != None {
+            if q[r.freq].1 != None {
                 unsafe {
-                    let nx: &mut Rec = &mut *q[r.freq].unwrap();
-                    nx.prev = Some(ptr);
+                    let tail: &mut Rec = &mut *q[r.freq].1.unwrap();
+                    tail.next = Some(ptr);
+                    r.prev = Some(tail);
                 }
-                r.next = q[r.freq];
+                r.next = None;
             }
-            q[r.freq] = Some(ptr);
+            else {
+                q[r.freq].0 = Some(ptr);
+                r.prev = None;
+            }
+            q[r.freq].1 = Some(ptr);
             //}}}
         }
         //}}}
@@ -194,10 +203,10 @@ fn main() {
         let mut g: Vec<(u32, u32)> = Vec::new();
 
         while f >= std::cmp::max(2, match matches.value_of("minfreq") {Some(x) => (*x).parse::<usize>().unwrap(), None => 2,}) {
-            if q[f] == None {f -= 1; continue;}
+            if q[f].0 == None {f -= 1; continue;}
             unsafe {
                 // 最頻出ペアを同定
-                let mut r: &mut Rec = &mut *q[f].unwrap();
+                let mut r: &mut Rec = &mut *q[f].0.unwrap();
                 let b = get_bg(&a, r.loc);
                 out_rec(&mut q, &mut r);
                 g.push(b);

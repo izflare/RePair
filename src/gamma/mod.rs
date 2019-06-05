@@ -4,8 +4,10 @@ extern crate strlib;
 use bit_vec::BitVec;
 use std::time::Instant;
 use strlib::gamma;
+use strlib::delta;
 
-pub fn encode(z: &Vec<u8>, g: &Vec<(u32, u32)>, s: &mut Vec<u32>, bv: &mut BitVec) -> () {
+pub fn encode(z: &Vec<u8>, g: &Vec<(u32, u32)>, s: &Vec<u32>, bv: &mut BitVec) -> () {
+
     let start = Instant::now();
 
     fn u_to_bv(x: u32, logn: u32, bv: &mut BitVec) -> () {
@@ -17,13 +19,38 @@ pub fn encode(z: &Vec<u8>, g: &Vec<(u32, u32)>, s: &mut Vec<u32>, bv: &mut BitVe
         }
     }
     let mut v: Vec<u32> = Vec::new();
-    for e in z {v.push(*e as u32);}
-    for e in g {v.push((*e).0); v.push((*e).1);}
-    v.append(s);
+
+    let mut prev = 0;
+    let mut lr = BitVec::new();
+    let mut r: Vec<u32> = Vec::new();
+    let mut u = Vec::new();
+    let mut ren = 1;
+    for e in g {
+        let m = std::cmp::max((*e).0, (*e).1);
+        if prev <= m {
+            v.push(m - prev + 1);
+            ren += 1;
+        }
+        else {
+            v.push(prev - m + 1);
+            r.push(ren);
+            ren = 1;
+        }
+        lr.push((*e).0 >= (*e).1);
+        prev = m;
+        u.push(std::cmp::min((*e).0, (*e).1));
+    }
+    let sbitlen = std::usize::MAX.count_ones() - g.len().leading_zeros();
 
     u_to_bv(z.len() as u32, 8, bv);
+    for e in z {u_to_bv(*e as u32, 8, bv);}
     u_to_bv(g.len() as u32, 32, bv);
-    gamma::encode(&v, bv);
+    delta::encode(&v, bv);
+    for e in &u {u_to_bv(*e, sbitlen, bv);}
+    for bit in lr {bv.push(bit);}
+    u_to_bv(r.len() as u32, 32, bv);
+    delta::encode(&r, bv);
+    for e in s {u_to_bv(*e, sbitlen, bv);}
     let end = start.elapsed();
 
     println!("[Result: bit encoding]");

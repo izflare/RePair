@@ -7,7 +7,6 @@ RePair is proposed in
 
 > N. Jesper Larsson and Alistair Moffat: _Off-line dictionary-based compression._ Proceedings of the IEEE, 88(11):1722-1732, 2000.
 
-The constructed grammar is encoded by Elias delta-encoding.
 
 ### Download
 

@@ -196,15 +196,56 @@ fn main() {
             q[r.freq].1 = Some(ptr);
             //}}}
         }
+
+        // unsafe fn pairsort(q: &mut Vec<(Option<*mut Rec>, Option<*mut Rec>)>, f: usize,
+        //              a: &Vec<(Option<u32>, Option<usize>, Option<usize>)>) -> () {
+        //     let mut lv: Vec<&mut Rec> = Vec::new();
+        //     // fn lv_push(r: &mut Rec,
+        //     //     q: &mut Vec<(Option<*mut Rec>, Option<*mut Rec>)>, f: usize, lv: &mut Vec<&mut Rec>) -> () {
+        //     //     let nwrap = r.next;
+        //     //     out_rec(q, r);
+        //     //     lv.push(r);
+        //     //     if let Some(n) = nwrap {lv_push(&mut * n, q, f, lv);}
+        //     // }
+        //     // lv_push(&mut *q[f].0.unwrap(), q, f, &mut lv);
+        //     let mut r = *q[f].0.unwrap();
+        //     loop {
+        //         let nwrap = r.next;
+        //         out_rec(q, &mut r);
+        //         lv.push(&mut r);
+        //         if let Some(n) = nwrap {r = *n;}
+        //         else {break;}
+        //     }
+        //     for r in &lv {
+        //         in_rec(q, *r);
+        //     }
+        //     // println!("{:?}", lv);
+        // }
+        //
+        // unsafe fn printlist(q: &mut Vec<(Option<*mut Rec>, Option<*mut Rec>)>, f: usize, 
+        //              a: &Vec<(Option<u32>, Option<usize>, Option<usize>)>) -> () {
+        //     unsafe fn print_pair(r: &mut Rec,
+        //              a: &Vec<(Option<u32>, Option<usize>, Option<usize>)>) -> () {
+        //         println!("{:?}, ", get_bg(&a, r.loc));
+        //         if let Some(n) = r.next {print_pair(&mut *n, a);}
+        //     }
+        //     print_pair(&mut *q[f].0.unwrap(), a);
+        // }
         //}}}
 
         // algorithm
         let mut v: usize = z.len() + 1;
         let mut g: Vec<(u32, u32)> = Vec::new();
+        // let mut init = true;
 
         while f >= std::cmp::max(2, match matches.value_of("minfreq") {Some(x) => (*x).parse::<usize>().unwrap(), None => 3,}) {
             if q[f].0 == None {f -= 1; continue;}
             unsafe {
+                // // if init {
+                //     println!("freq: {}", f);
+                //     printlist(&mut q, f, &a);
+                // // }
+                // init = false;
                 // 最頻出ペアを同定
                 let mut r: &mut Rec = &mut *q[f].0.unwrap();
                 let b = get_bg(&a, r.loc);

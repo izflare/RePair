@@ -1,10 +1,12 @@
-// use std::collections::HashMap;
+use std::collections::HashMap;
 
-struct Bigram {left: u32, right: u32,}
+#[derive(Hash, Eq, PartialEq)]
+pub struct Bigram {pub left: u32, pub right: u32,}
 
-struct Bucket {val: Option<u32>, prev: Option<usize>, next: Option<usize>,}
+#[derive(Clone)]
+pub struct Bucket {pub val: Option<u32>, pub prev: Option<usize>, pub next: Option<usize>,}
 
-trait PairArray : std::ops::Index<usize> {
+pub trait PairArray : std::ops::Index<usize> {
     fn rgh_pos(&self, i: usize) -> Option<usize>;
     fn lft_pos(&self, i: usize) -> Option<usize>;
     fn rgh_bg(&self, i: usize) -> Option<Bigram>;
@@ -12,6 +14,7 @@ trait PairArray : std::ops::Index<usize> {
 }
 
 impl PairArray for Vec<Bucket> {
+    //{{{
     fn rgh_pos(&self, i: usize) -> Option<usize> {
         if self[i].val == None {self[i].next}
         else if i + 1 < self.len() {Some(i + 1)}
@@ -43,64 +46,47 @@ impl PairArray for Vec<Bucket> {
         }
         else {None}
     }
+    //}}}
+}
+
+pub struct Record {pub loc: usize, pub freq: usize, pub prev: Option<*mut Record>, pub next: Option<*mut Record>}
+
+pub fn create_ds(a: &mut Vec<Bucket>, h: &mut HashMap<Bigram, *mut Record>, z: &mut Vec<u8>, s: &Vec<u8>) -> () {
+    //{{{
+    let mut d: HashMap<u8, u32> = HashMap::new();
+    let mut var: u32 = 1;
+    let mut f: usize = 1;
+    for i in 0..s.len() {
+        if d.contains_key(&s[i]) {
+            a[i].val = Some(*d.entry(s[i]).or_insert(var));
+        }
+        else {
+            d.insert(s[i], var);
+            z.push(s[i]);
+            var += 1;
+        }
+    }
+    for i in (0..s.len()-1).rev() {
+        if let Some(bg) = a.rgh_bg(i) {
+            if h.contains_key(&bg) {
+                if let Some(ref_ptr) = h.get(&bg) { 
+                    unsafe {
+                        a[i].next = Some((**ref_ptr).loc);
+                        a[(**ref_ptr).loc].prev = Some(i);
+                        (**ref_ptr).loc = i;
+                        (**ref_ptr).freq += 1;
+                        if f < (**ref_ptr).freq {f = (**ref_ptr).freq;}
+                    }
+                }
+            }
+            else {h.insert(bg, Box::into_raw(Box::new(Record {loc: i, freq: 1, prev: None, next: None})));}
+        }
+    }
+    //}}}
 }
 
 
 
-        // // preprocessing
-        // // 終端記号を変数に置換して，文字列を配列に格納
-        // // each tuple is (0: char, 1: prev, 2: next)
-        // let mut a: Vec<(Option<u32>, Option<usize>, Option<usize>)> = vec![(None, None, None); s.len()]; 
-        // let mut z: Vec<u8> = Vec::new();
-        // //{{{
-        // {
-        //     // let mut d: HashMap<char, usize> = HashMap::new();
-        //     let mut d: HashMap<u8, u32> = HashMap::new();
-        //     let mut x = 1;
-        //     for i in 0..s.len() {
-        //         if d.contains_key(&s[i]) {
-        //             let e = d.get(&s[i]);
-        //             a[i] = (Some(*e.unwrap()), None, None);
-        //         }
-        //         else {
-        //             d.insert(s[i], x);
-        //             a[i] = (Some(x), None, None);
-        //             x += 1;
-        //             z.push(s[i]);
-        //         }
-        //     }
-        // }
-        //
-        //
-        // //}}}
-        //
-        // // bigramの位置をつなぎながらハッシュ表を作成
-        // struct Rec {loc: usize, freq: usize, prev: Option<*mut Rec>, next: Option<*mut Rec>};
-        // let mut h: HashMap<(u32, u32), *mut Rec> = HashMap::new();
-        // let mut f: usize = 1;
-        // let mut k: Vec<(u32, u32)> = Vec::new();
-        // //{{{
-        // for i in (0..s.len()-1).rev() {
-        //     let b = (a[i].0.unwrap(), a[i+1].0.unwrap());
-        //     if h.contains_key(&b) {
-        //         unsafe {
-        //             let mut r: &mut Rec = &mut **(h.get(&b).unwrap());
-        //             a[i].2 = Some(r.loc);
-        //             a[r.loc].1 = Some(i);
-        //             r.loc = i;
-        //             r.freq += 1;
-        //             if f < r.freq {f = r.freq;}
-        //         }
-        //     }
-        //     else {
-        //         let r = Box::new(Rec {loc: i, freq: 1, prev: None, next: None});
-        //         let x: *mut Rec = Box::into_raw(r);
-        //         h.insert(b, x);
-        //         k.push(b);
-        //     }
-        // }
-        // //}}}
-        //
         // // 頻度表を作成
         // // (head, tail)
         // let mut q: Vec<(Option<*mut Rec>, Option<*mut Rec>)> = vec![(None, None); f+1];

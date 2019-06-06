@@ -17,7 +17,6 @@ git clone https://github.com/izflare/RePair.git
 ### Compile
 
 This code has been tested under linux compiling with rust (cargo) ver 1.34.0.  
-After download the repository, 
 
 ```
 cd RePair
@@ -25,8 +24,6 @@ cargo build --release
 ```
 
 ### Run
-
-After compiling,
 
 ```
 cd target/release

@@ -1,4 +1,0 @@
-/target
-/sample
-.gitignore
-**/*.rs.bk

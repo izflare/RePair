@@ -1,2 +1,2 @@
-pub mod gamma;
+pub mod maxinc;
 

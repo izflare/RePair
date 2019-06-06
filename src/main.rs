@@ -8,7 +8,7 @@ use std::fs::File;
 use std::collections::HashMap;
 use std::time::Instant;
 use bit_vec::BitVec;
-use rp::gamma;
+use rp::maxinc;
 
 fn main() {
 
@@ -187,12 +187,12 @@ fn main() {
                     tail.next = Some(ptr);
                     r.prev = Some(tail);
                 }
-                r.next = None;
             }
             else {
                 q[r.freq].0 = Some(ptr);
                 r.prev = None;
             }
+            r.next = None;
             q[r.freq].1 = Some(ptr);
             //}}}
         }
@@ -202,7 +202,7 @@ fn main() {
         let mut v: usize = z.len() + 1;
         let mut g: Vec<(u32, u32)> = Vec::new();
 
-        while f >= std::cmp::max(2, match matches.value_of("minfreq") {Some(x) => (*x).parse::<usize>().unwrap(), None => 2,}) {
+        while f >= std::cmp::max(2, match matches.value_of("minfreq") {Some(x) => (*x).parse::<usize>().unwrap(), None => 3,}) {
             if q[f].0 == None {f -= 1; continue;}
             unsafe {
                 // 最頻出ペアを同定
@@ -379,7 +379,7 @@ fn main() {
 
         // encode
         let mut bv: BitVec = BitVec::new();
-        gamma::encode(&z, &g, &s, &mut bv);
+        maxinc::encode(&z, &g, &s, &mut bv);
         let mut f = BufWriter::new(File::create(matches.value_of("input").unwrap().to_owned()+".rp").unwrap());
         f.write(&bv.to_bytes()).unwrap();
 
@@ -398,7 +398,7 @@ fn main() {
     else {
         let mut bv: BitVec = BitVec::from_bytes(&s);
         let mut u: Vec<u8> = Vec::new();
-        gamma::decode(&mut bv, &mut u);
+        maxinc::decode(&mut bv, &mut u);
 
         let mut f = BufWriter::new(File::create(matches.value_of("input").unwrap().to_owned()+".dcp").unwrap());
         f.write(&u).unwrap();

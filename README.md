@@ -1,4 +1,4 @@
-# RePair
+# RePair (ver 0.1.1)
 
 ### Description
 
@@ -26,10 +26,19 @@ cargo build --release
 ### Run
 
 ```
-cd target/release
-./rp --input <input> [--print]
+USAGE:
+	cd target/release
+    ./rp [FLAGS] [OPTIONS] --input <input>
+
+FLAGS:
+    -d, --dcp        Decompress
+    -h, --help       Prints help information
+    -p, --print      Print the detail of constructed grammar
+    -V, --version    Prints version information
+
+OPTIONS:
+    -i, --input <input>    Input sourse text file
+    -m, --min <minfreq>    Set minimum frequency of pairing operation (default: 3)
 ```
 
-`<input>` is your input text data file.  
-If you execute with `--print` option, constructed grammar will also be displayed.
 

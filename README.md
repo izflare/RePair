@@ -1,4 +1,4 @@
-# RePair (ver 0.1.1)
+## RePair
 
 ### Description
 

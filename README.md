@@ -27,7 +27,7 @@ cargo build --release
 
 ```
 USAGE:
-	cd target/release
+    cd target/release
     ./rp [FLAGS] [OPTIONS] --input <input>
 
 FLAGS:

@@ -85,8 +85,6 @@ pub fn create_ds(a: &mut Vec<Bucket>, h: &mut HashMap<Bigram, *mut Record>, z: &
     //}}}
 }
 
-
-
         // // 頻度表を作成
         // // (head, tail)
         // let mut q: Vec<(Option<*mut Rec>, Option<*mut Rec>)> = vec![(None, None); f+1];

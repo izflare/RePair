@@ -11,6 +11,7 @@ pub trait PairArray: std::ops::Index<usize> {
     fn lft_pos(&self, i: usize) -> Option<usize>;
     fn rgh_bg(&self, i: usize) -> Option<Bigram>;
     fn lft_bg(&self, i: usize) -> Option<Bigram>;
+    fn create(&mut self, h: &mut HashMap<Bigram, *mut Record>, z: &mut Vec<u8>, s: &Vec<u8>) -> ();
 }
 
 impl PairArray for Vec<Bucket> {
@@ -46,51 +47,50 @@ impl PairArray for Vec<Bucket> {
         }
         else {None}
     }
+
+    fn create(&mut self, h: &mut HashMap<Bigram, *mut Record>, z: &mut Vec<u8>, s: &Vec<u8>) -> () {
+        let mut d: HashMap<u8, u32> = HashMap::new();
+        let mut var: u32 = 1;
+        let mut f: usize = 1;
+        for i in 0..self.len() {
+            if d.contains_key(&s[i]) {
+                self[i].val = Some(*d.entry(s[i]).or_insert(var));
+            }
+            else {
+                d.insert(s[i], var);
+                z.push(s[i]);
+                var += 1;
+            }
+        }
+        for i in (0..self.len()-1).rev() {
+            if let Some(bg) = self.rgh_bg(i) {
+                if h.contains_key(&bg) {
+                    if let Some(r) = h.get(&bg) { 
+                        unsafe {
+                            self[i].next = Some((**r).loc);
+                            self[(**r).loc].prev = Some(i);
+                            (**r).loc = i;
+                            (**r).freq += 1;
+                            if f < (**r).freq {f = (**r).freq;}
+                        }
+                    }
+                }
+                else {h.insert(bg, Box::into_raw(Box::new(Record {loc: i, freq: 1, prev: None, next: None})));}
+            }
+        }
+    }
     //}}}
 }
 
 pub struct Record {pub loc: usize, pub freq: usize, pub prev: Option<*mut Record>, pub next: Option<*mut Record>}
 
-pub fn create_ds(a: &mut Vec<Bucket>, h: &mut HashMap<Bigram, *mut Record>, z: &mut Vec<u8>, s: &Vec<u8>) -> () {
-    //{{{
-    let mut d: HashMap<u8, u32> = HashMap::new();
-    let mut var: u32 = 1;
-    let mut f: usize = 1;
-    for i in 0..s.len() {
-        if d.contains_key(&s[i]) {
-            a[i].val = Some(*d.entry(s[i]).or_insert(var));
-        }
-        else {
-            d.insert(s[i], var);
-            z.push(s[i]);
-            var += 1;
-        }
-    }
-    for i in (0..s.len()-1).rev() {
-        if let Some(bg) = a.rgh_bg(i) {
-            if h.contains_key(&bg) {
-                if let Some(ref_ptr) = h.get(&bg) { 
-                    unsafe {
-                        a[i].next = Some((**ref_ptr).loc);
-                        a[(**ref_ptr).loc].prev = Some(i);
-                        (**ref_ptr).loc = i;
-                        (**ref_ptr).freq += 1;
-                        if f < (**ref_ptr).freq {f = (**ref_ptr).freq;}
-                    }
-                }
-            }
-            else {h.insert(bg, Box::into_raw(Box::new(Record {loc: i, freq: 1, prev: None, next: None})));}
-        }
-    }
-    //}}}
-}
-
 pub struct List {pub head: Option<*mut Record>, pub tail: Option<*mut Record>}
 
 pub trait FreqTable: std::ops::Index<usize> {
     fn top(&self, f: usize) -> Option<*mut Record>;
-    unsafe fn push(&mut self, r: *mut Record) -> ();
-    unsafe fn pop(&mut self, r: *mut Record) -> ();
+    unsafe fn enqueue(&mut self, r: *mut Record) -> ();
+    unsafe fn dequeue(&mut self, r: *mut Record) -> ();
+    fn create(&mut self, h: &HashMap<Bigram, *mut Record>) -> ();
 }
 
 impl FreqTable for Vec<List> {
@@ -99,7 +99,7 @@ impl FreqTable for Vec<List> {
         return self[f].head
     }
 
-    unsafe fn push(&mut self, r: *mut Record) -> () {
+    unsafe fn enqueue(&mut self, r: *mut Record) -> () {
         let f = (*r).freq;
         if let Some(tail) = self[f].tail {
             (*tail).next = Some(r);
@@ -112,7 +112,7 @@ impl FreqTable for Vec<List> {
         }
     }
 
-    unsafe fn pop(&mut self, r: *mut Record) -> () {
+    unsafe fn dequeue(&mut self, r: *mut Record) -> () {
         let f = (*r).freq;
         match ((*r).prev, (*r).next) {
             (Some(x), Some(y)) => {(*x).next = Some(y); (*y).prev = Some(x);},
@@ -123,18 +123,13 @@ impl FreqTable for Vec<List> {
         (*r).prev = None;
         (*r).next = None;
     }
+
+    fn create(&mut self, h: &HashMap<Bigram, *mut Record>) -> () {
+        for r in h.values() {
+            unsafe {self.enqueue(*r);}
+        }
+    }
     //}}}
 }
 
-        // // 頻度表を作成
-        // // (head, tail)
-        // let mut q: Vec<(Option<*mut Rec>, Option<*mut Rec>)> = vec![(None, None); f+1];
-        // //{{{
-        // for e in &k {
-        //     let v = h.get(e).unwrap();
-        //     unsafe {
-        //         let r: &mut Rec = &mut **v;
-        //         in_rec(&mut q, r);
-        //     }
-        // }
-        //
+

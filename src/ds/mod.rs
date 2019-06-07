@@ -6,7 +6,7 @@ pub struct Bigram {pub left: u32, pub right: u32,}
 #[derive(Clone)]
 pub struct Bucket {pub val: Option<u32>, pub prev: Option<usize>, pub next: Option<usize>,}
 
-pub trait PairArray : std::ops::Index<usize> {
+pub trait PairArray: std::ops::Index<usize> {
     fn rgh_pos(&self, i: usize) -> Option<usize>;
     fn lft_pos(&self, i: usize) -> Option<usize>;
     fn rgh_bg(&self, i: usize) -> Option<Bigram>;
@@ -85,6 +85,47 @@ pub fn create_ds(a: &mut Vec<Bucket>, h: &mut HashMap<Bigram, *mut Record>, z: &
     //}}}
 }
 
+pub struct List {pub head: Option<*mut Record>, pub tail: Option<*mut Record>}
+
+pub trait FreqTable: std::ops::Index<usize> {
+    fn top(&self, f: usize) -> Option<*mut Record>;
+    unsafe fn push(&mut self, r: *mut Record) -> ();
+    unsafe fn pop(&mut self, r: *mut Record) -> ();
+}
+
+impl FreqTable for Vec<List> {
+    //{{{
+    fn top(&self, f: usize) -> Option<*mut Record> {
+        return self[f].head
+    }
+
+    unsafe fn push(&mut self, r: *mut Record) -> () {
+        let f = (*r).freq;
+        if let Some(tail) = self[f].tail {
+            (*tail).next = Some(r);
+            (*r).prev = Some(tail);
+            self[f].tail = Some(r);
+        }
+        else {
+            self[f].head = Some(r);
+            self[f].tail = Some(r);
+        }
+    }
+
+    unsafe fn pop(&mut self, r: *mut Record) -> () {
+        let f = (*r).freq;
+        match ((*r).prev, (*r).next) {
+            (Some(x), Some(y)) => {(*x).next = Some(y); (*y).prev = Some(x);},
+            (Some(x), None) => {(*x).next = None; self[f].tail = Some(x);},
+            (None, Some(y)) => {(*y).prev = None; self[f].head = Some(y);},
+            (None, None) => {self[f].head = None; self[f].tail = None;},
+        }
+        (*r).prev = None;
+        (*r).next = None;
+    }
+    //}}}
+}
+
         // // 頻度表を作成
         // // (head, tail)
         // let mut q: Vec<(Option<*mut Rec>, Option<*mut Rec>)> = vec![(None, None); f+1];
@@ -96,88 +137,4 @@ pub fn create_ds(a: &mut Vec<Bucket>, h: &mut HashMap<Bigram, *mut Record>, z: &
         //         in_rec(&mut q, r);
         //     }
         // }
-        //
-        // // q の関数
-        // // Record をリストから切り離す
-        // fn out_rec(q: &mut Vec<(Option<*mut Rec>, Option<*mut Rec>)>, r: &mut Rec) {
-        //     //{{{
-        //     if r.prev == None {
-        //         q[r.freq].0 = r.next;
-        //     }
-        //     else {
-        //         unsafe {
-        //             let pr: &mut Rec = &mut *r.prev.unwrap();
-        //             pr.next = r.next;
-        //         }
-        //     }
-        //
-        //     if r.next == None {
-        //         q[r.freq].1 = r.prev;
-        //     }
-        //     else {
-        //         unsafe {
-        //             let nx: &mut Rec = &mut *r.next.unwrap();
-        //             nx.prev = r.prev;
-        //         }
-        //     }
-        //     r.prev = None;
-        //     r.next = None;
-        //     //}}}
-        // }
-        //
-        // // Record をリストの末尾に追加
-        // fn in_rec(q: &mut Vec<(Option<*mut Rec>, Option<*mut Rec>)>, r: &mut Rec) {
-        //     //{{{
-        //     let ptr: *mut Rec = &mut *r;
-        //     if q[r.freq].1 != None {
-        //         unsafe {
-        //             let tail: &mut Rec = &mut *q[r.freq].1.unwrap();
-        //             tail.next = Some(ptr);
-        //             r.prev = Some(tail);
-        //         }
-        //     }
-        //     else {
-        //         q[r.freq].0 = Some(ptr);
-        //         r.prev = None;
-        //     }
-        //     r.next = None;
-        //     q[r.freq].1 = Some(ptr);
-        //     //}}}
-        // }
-        //
-        // // unsafe fn pairsort(q: &mut Vec<(Option<*mut Rec>, Option<*mut Rec>)>, f: usize,
-        // //              a: &Vec<(Option<u32>, Option<usize>, Option<usize>)>) -> () {
-        // //     let mut lv: Vec<&mut Rec> = Vec::new();
-        // //     // fn lv_push(r: &mut Rec,
-        // //     //     q: &mut Vec<(Option<*mut Rec>, Option<*mut Rec>)>, f: usize, lv: &mut Vec<&mut Rec>) -> () {
-        // //     //     let nwrap = r.next;
-        // //     //     out_rec(q, r);
-        // //     //     lv.push(r);
-        // //     //     if let Some(n) = nwrap {lv_push(&mut * n, q, f, lv);}
-        // //     // }
-        // //     // lv_push(&mut *q[f].0.unwrap(), q, f, &mut lv);
-        // //     let mut r = *q[f].0.unwrap();
-        // //     loop {
-        // //         let nwrap = r.next;
-        // //         out_rec(q, &mut r);
-        // //         lv.push(&mut r);
-        // //         if let Some(n) = nwrap {r = *n;}
-        // //         else {break;}
-        // //     }
-        // //     for r in &lv {
-        // //         in_rec(q, *r);
-        // //     }
-        // //     // println!("{:?}", lv);
-        // // }
-        // //
-        // // unsafe fn printlist(q: &mut Vec<(Option<*mut Rec>, Option<*mut Rec>)>, f: usize, 
-        // //              a: &Vec<(Option<u32>, Option<usize>, Option<usize>)>) -> () {
-        // //     unsafe fn print_pair(r: &mut Rec,
-        // //              a: &Vec<(Option<u32>, Option<usize>, Option<usize>)>) -> () {
-        // //         println!("{:?}, ", get_bg(&a, r.loc));
-        // //         if let Some(n) = r.next {print_pair(&mut *n, a);}
-        // //     }
-        // //     print_pair(&mut *q[f].0.unwrap(), a);
-        // // }
-        // //}}}
         //

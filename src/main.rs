@@ -1,23 +1,27 @@
+#[macro_use]
 extern crate clap;
 extern crate bit_vec;
 
-use clap::{App, Arg};
+use clap::{App, Arg, ArgGroup};
 use std::io::{prelude::*, BufReader, BufWriter};
 use std::fs::File;
 use std::time::Instant;
 use bit_vec::BitVec;
-use rp::encode;
-use rp::comp;
-use rp::{cfg::*};
+use rp::module::encode;
+use rp::module::comp;
+use rp::module::{cfg::*};
 
 fn main() {
 
     // args
     let app = App::new("RePair")
         //{{{
-        .version("0.1.1")
-        .author("flare")
-        .about("RePair compress/decompressor")
+        .version(crate_version!())
+        .author(crate_authors!())
+        .args_from_usage("-c 'compression mode'
+                         -d 'decompression mode'")
+        .group(ArgGroup::with_name("mode")
+            .args(&["c", "d"]).required(true))
         .arg(Arg::with_name("input")
             .help("Input sourse text file")
             .short("i")
@@ -25,16 +29,16 @@ fn main() {
             .takes_value(true)                  
             .required(true)                     
         )
-        .arg(Arg::with_name("decompress")
-            .help("Decompress")
-            .short("d")
-            .long("dcp")
-        )
         .arg(Arg::with_name("minfreq")
             .help("Set minimum frequency of pairing operation (default: 3)")
             .short("m")
             .long("min")
             .takes_value(true)
+        )
+        .arg(Arg::with_name("sort")
+            .help("Enable bigram sorting")
+            .short("s")
+            .long("sort")
         )
         .arg(Arg::with_name("print")
             .help("Print the detail of constructed grammar")
@@ -50,17 +54,15 @@ fn main() {
     f.read_to_end(&mut s).expect("Unable to read");
 
     // compression
-    if !matches.is_present("decompress") {
+    if matches.is_present("c") {
         let start = Instant::now();
 
         let minfreq = 
                 std::cmp::max(2, match matches.value_of("minfreq") {Some(x) => (*x).parse::<usize>().unwrap(), None => 3,});
         let mut g: Grammar = Grammar::new();
-        comp::compression(&s, &mut g, &minfreq);
+        comp::compression(&s, &mut g, minfreq, matches.is_present("sort"));
 
         let end = start.elapsed();
-
-
         println!("[Result: grammar construction]");
         //{{{
         println!("Alphabet size     : {:?}", g.terminal.len());
@@ -95,14 +97,23 @@ fn main() {
     }
 
     // decompression
-    else {
+    else if matches.is_present("d") {
+        let start = Instant::now();
+
         let bv: BitVec = BitVec::from_bytes(&s);
         let mut u: Vec<u8> = Vec::new();
         comp::decompression(&bv, &mut u);
 
+        let end = start.elapsed();
+        println!("[Result: decompression]");
+        println!("{}.{:03} sec elapsed", end.as_secs(), end.subsec_nanos()/1_000_000);
+
         // write
-        let mut f = BufWriter::new(File::create(matches.value_of("input").unwrap().to_owned()+".dcp").unwrap());
+        let mut f = BufWriter::new(File::create(matches.value_of("input").unwrap().to_owned()+".d").unwrap());
         f.write(&u).unwrap();
+    }
+    else {
+        panic!("mdoe error");
     }
 
 }

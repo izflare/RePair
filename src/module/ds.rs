@@ -134,7 +134,9 @@ impl FreqTable for Vec<List> {
 
     fn create(&mut self, h: &HashMap<Bigram, *mut Record>) -> () {
         for r in h.values() {
-            unsafe {self.enqueue(*r);}
+            unsafe {
+                if (*(*r)).freq > 1 {self.enqueue(*r);}
+            }
         }
     }
     //}}}

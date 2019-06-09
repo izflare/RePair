@@ -61,7 +61,7 @@ pub fn encode(g: &Grammar, bv: &mut BitVec) -> () {
     println!("{}.{:03} sec elapsed", end.as_secs(), end.subsec_nanos()/1_000_000);
 }
 
-pub fn decode(bv: &mut BitVec, w: &mut Vec<u8>) -> () {
+pub fn decode(bv: &BitVec, w: &mut Vec<u8>) -> () {
     let mut v: Vec<u32> = Vec::new();
     let mut g: Grammar = Grammar::new();
     let mut zlen = 0;

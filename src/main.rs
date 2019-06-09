@@ -9,11 +9,11 @@ use std::collections::HashMap;
 use std::time::Instant;
 use bit_vec::BitVec;
 use rp::maxinc;
-// use rp::{ds::*};
+use rp::{ds::*};
 
 fn main() {
 
-    // 引数処理
+    // args
     let app = App::new("RePair")
         //{{{
         .version("0.1.1")
@@ -45,7 +45,7 @@ fn main() {
         //}}}
     let matches = app.get_matches();
 
-    // 読み込み
+    // file io
     let mut s = Vec::new();
     let mut f = BufReader::new(File::open(&matches.value_of("input").unwrap()).expect("file not found"));
     f.read_to_end(&mut s).expect("Unable to read");
@@ -54,370 +54,164 @@ fn main() {
         let start = Instant::now();
 
         // preprocessing
-        // 終端記号を変数に置換して，文字列を配列に格納
-        // each tuple is (0: char, 1: prev, 2: next)
-        let mut a: Vec<(Option<u32>, Option<usize>, Option<usize>)> = vec![(None, None, None); s.len()]; 
+        let mut a: Vec<Bucket> = vec![Bucket {val: None, prev: None, next: None}; s.len()];
+        let mut h: HashMap<Bigram, *mut Record> = HashMap::with_capacity(s.len());
         let mut z: Vec<u8> = Vec::new();
-        //{{{
-        {
-            // let mut d: HashMap<char, usize> = HashMap::new();
-            let mut d: HashMap<u8, u32> = HashMap::new();
-            let mut x = 1;
-            for i in 0..s.len() {
-                if d.contains_key(&s[i]) {
-                    let e = d.get(&s[i]);
-                    a[i] = (Some(*e.unwrap()), None, None);
-                }
-                else {
-                    d.insert(s[i], x);
-                    a[i] = (Some(x), None, None);
-                    x += 1;
-                    z.push(s[i]);
-                }
-            }
-        }
-
-        // a の関数
-        // 右隣の空でない要素の番号を取得
-        fn get_rt(a: &Vec<(Option<u32>, Option<usize>, Option<usize>)>, i: usize) -> usize {
-            //{{{
-            if a[i+1].0 == None {
-                match a[i+1].2 {Some(x) => x, None => 0}
-            }
-            else {
-                i+1
-            }
-            //}}}
-        }
-
-        // 左隣の空でない要素の番号を取得
-        fn get_lt(a: &Vec<(Option<u32>, Option<usize>, Option<usize>)>, i: usize) -> usize {
-            //{{{
-            if a[i-1].0 == None {
-                a[i-1].1.unwrap()
-            }
-            else {
-                i-1
-            }
-            //}}}
-        }
-
-        // bigramを取得
-        fn get_bg(a: &Vec<(Option<u32>, Option<usize>, Option<usize>)>, i: usize) -> (u32, u32) {
-            //{{{
-            (a[i].0.unwrap(), a[get_rt(&a, i)].0.unwrap())
-            //}}}
-        }
-
-        //}}}
-
-        // bigramの位置をつなぎながらハッシュ表を作成
-        struct Rec {loc: usize, freq: usize, prev: Option<*mut Rec>, next: Option<*mut Rec>};
-        let mut h: HashMap<(u32, u32), *mut Rec> = HashMap::new();
-        let mut f: usize = 1;
-        let mut k: Vec<(u32, u32)> = Vec::new();
-        //{{{
-        for i in (0..s.len()-1).rev() {
-            let b = (a[i].0.unwrap(), a[i+1].0.unwrap());
-            if h.contains_key(&b) {
-                unsafe {
-                    let mut r: &mut Rec = &mut **(h.get(&b).unwrap());
-                    a[i].2 = Some(r.loc);
-                    a[r.loc].1 = Some(i);
-                    r.loc = i;
-                    r.freq += 1;
-                    if f < r.freq {f = r.freq;}
-                }
-            }
-            else {
-                let r = Box::new(Rec {loc: i, freq: 1, prev: None, next: None});
-                let x: *mut Rec = Box::into_raw(r);
-                h.insert(b, x);
-                k.push(b);
-            }
-        }
-        //}}}
-
-        // 頻度表を作成
-        // (head, tail)
-        let mut q: Vec<(Option<*mut Rec>, Option<*mut Rec>)> = vec![(None, None); f+1];
-        //{{{
-        for e in &k {
-            let v = h.get(e).unwrap();
-            unsafe {
-                let r: &mut Rec = &mut **v;
-                in_rec(&mut q, r);
-            }
-        }
-
-        // q の関数
-        // Record をリストから切り離す
-        fn out_rec(q: &mut Vec<(Option<*mut Rec>, Option<*mut Rec>)>, r: &mut Rec) {
-            //{{{
-            if r.prev == None {
-                q[r.freq].0 = r.next;
-            }
-            else {
-                unsafe {
-                    let pr: &mut Rec = &mut *r.prev.unwrap();
-                    pr.next = r.next;
-                }
-            }
-
-            if r.next == None {
-                q[r.freq].1 = r.prev;
-            }
-            else {
-                unsafe {
-                    let nx: &mut Rec = &mut *r.next.unwrap();
-                    nx.prev = r.prev;
-                }
-            }
-            r.prev = None;
-            r.next = None;
-            //}}}
-        }
-
-        // Record をリストの末尾に追加
-        fn in_rec(q: &mut Vec<(Option<*mut Rec>, Option<*mut Rec>)>, r: &mut Rec) {
-            //{{{
-            let ptr: *mut Rec = &mut *r;
-            if q[r.freq].1 != None {
-                unsafe {
-                    let tail: &mut Rec = &mut *q[r.freq].1.unwrap();
-                    tail.next = Some(ptr);
-                    r.prev = Some(tail);
-                }
-            }
-            else {
-                q[r.freq].0 = Some(ptr);
-                r.prev = None;
-            }
-            r.next = None;
-            q[r.freq].1 = Some(ptr);
-            //}}}
-        }
-
-        // unsafe fn pairsort(q: &mut Vec<(Option<*mut Rec>, Option<*mut Rec>)>, f: usize,
-        //              a: &Vec<(Option<u32>, Option<usize>, Option<usize>)>) -> () {
-        //     let mut lv: Vec<&mut Rec> = Vec::new();
-        //     // fn lv_push(r: &mut Rec,
-        //     //     q: &mut Vec<(Option<*mut Rec>, Option<*mut Rec>)>, f: usize, lv: &mut Vec<&mut Rec>) -> () {
-        //     //     let nwrap = r.next;
-        //     //     out_rec(q, r);
-        //     //     lv.push(r);
-        //     //     if let Some(n) = nwrap {lv_push(&mut * n, q, f, lv);}
-        //     // }
-        //     // lv_push(&mut *q[f].0.unwrap(), q, f, &mut lv);
-        //     let mut r = *q[f].0.unwrap();
-        //     loop {
-        //         let nwrap = r.next;
-        //         out_rec(q, &mut r);
-        //         lv.push(&mut r);
-        //         if let Some(n) = nwrap {r = *n;}
-        //         else {break;}
-        //     }
-        //     for r in &lv {
-        //         in_rec(q, *r);
-        //     }
-        //     // println!("{:?}", lv);
-        // }
-        //
-        // unsafe fn printlist(q: &mut Vec<(Option<*mut Rec>, Option<*mut Rec>)>, f: usize, 
-        //              a: &Vec<(Option<u32>, Option<usize>, Option<usize>)>) -> () {
-        //     unsafe fn print_pair(r: &mut Rec,
-        //              a: &Vec<(Option<u32>, Option<usize>, Option<usize>)>) -> () {
-        //         println!("{:?}, ", get_bg(&a, r.loc));
-        //         if let Some(n) = r.next {print_pair(&mut *n, a);}
-        //     }
-        //     print_pair(&mut *q[f].0.unwrap(), a);
-        // }
-        //}}}
+        let mut f: usize = a.create(&mut h, &mut z, &s);
+        let mut q: Vec<List> = vec![List {head: None, tail: None}; f + 1];
+        q.create(&h);
+        let minfreq = 
+            std::cmp::max(2, match matches.value_of("minfreq") {Some(x) => (*x).parse::<usize>().unwrap(), None => 3,});
 
         // algorithm
         let mut v: usize = z.len() + 1;
         let mut g: Vec<(u32, u32)> = Vec::new();
-        // let mut init = true;
+        loop {
+            if f < minfreq {break;}
+            if let Some(r) = q.top(f) { unsafe {
+                // the most frequent bigram
+                let bg: Bigram = a.rgh_bg((*r).loc).unwrap();
+                q.dequeue(r);
+                h.remove(&bg);
+                g.push((bg.left, bg.right));
 
-        while f >= std::cmp::max(2, match matches.value_of("minfreq") {Some(x) => (*x).parse::<usize>().unwrap(), None => 3,}) {
-            if q[f].0 == None {f -= 1; continue;}
-            unsafe {
-                // // if init {
-                //     println!("freq: {}", f);
-                //     printlist(&mut q, f, &a);
-                // // }
-                // init = false;
-                // 最頻出ペアを同定
-                let mut r: &mut Rec = &mut *q[f].0.unwrap();
-                let b = get_bg(&a, r.loc);
-                out_rec(&mut q, &mut r);
-                g.push(b);
-
-                // 置換・更新，順方向，既存ペアのデクリメント
-                let mut i: usize = r.loc;
-                let mut o: bool = false;
+                let mut il: usize = (*r).loc;
+                let mut ir: usize = a.rgh_pos(il).unwrap();
+                // decrement
                 loop {
                     //{{{
-                    let rt_i = get_rt(&a, i);
-                    // 右隣のペアの頻度をデクリメント
-                    if i > 0 && !o {
-                        //{{{
-                        let lt_i = get_lt(&a, i);
-                        let lt_b: (u32, u32) = get_bg(&a, lt_i);
-                        let mut lt_r: &mut Rec = &mut **h.get(&lt_b).unwrap();
-                        match a[lt_i].1 {Some(x) => a[x].2 = a[lt_i].2, None => ()}
-                        match a[lt_i].2 {Some(x) => a[x].1 = a[lt_i].1, None => ()}
-                        out_rec(&mut q, &mut lt_r);
-                        lt_r.freq -= 1;
-                        if lt_r.freq > 0 && lt_r.loc == lt_i {lt_r.loc = a[lt_i].2.unwrap()}
-                        if lt_r.freq > 0 {in_rec(&mut q, &mut lt_r);}
-                        else {h.remove(&lt_b);}
-                        //}}}
-                    }
-
-                    // 左隣のペアの頻度をデクリメント
-                    if i < a.len()-1 && rt_i != 0 && rt_i < a.len()-1 && get_rt(&a, rt_i) != 0 {
-                        //{{{
-                        let rt_b: (u32, u32) = get_bg(&a, rt_i);
-                        match a[i].2 {
-                            Some(x) => {
-                                // fully overlap
-                                if x == rt_i {
-                                    let nx_rt_i = a[rt_i].2;
-                                    a[i].2 = nx_rt_i;
-                                    match nx_rt_i {
-                                        Some(x) => {
-                                            a[x].1 = Some(i);
-                                            o = get_rt(&a, rt_i) == x;
-                                        }, 
-                                        None => {o = false;}
-                                    }
-                                }
-                                else {
-                                    let mut rt_r: &mut Rec = &mut **h.get(&rt_b).unwrap();
-                                    match a[rt_i].1 {Some(x) => a[x].2 = a[rt_i].2, None => ()}
-                                    match a[rt_i].2 {Some(x) => a[x].1 = a[rt_i].1, None => ()}
-                                    out_rec(&mut q, &mut rt_r);
-                                    rt_r.freq -= 1;
-                                    if rt_r.freq > 0 && rt_r.loc == rt_i {rt_r.loc = a[rt_i].2.unwrap()}
-                                    if rt_r.freq > 0 {in_rec(&mut q, &mut rt_r);}
-                                    else {h.remove(&rt_b);}
-                                    // consider partially overlap
-                                    o = x == get_rt(&a, rt_i);
-                                }
-                            },
-                            None => {
-                                let mut rt_r: &mut Rec = &mut **h.get(&rt_b).unwrap();
-                                match a[rt_i].1 {Some(x) => a[x].2 = a[rt_i].2, None => ()}
-                                match a[rt_i].2 {Some(x) => a[x].1 = a[rt_i].1, None => ()}
-                                out_rec(&mut q, &mut rt_r);
-                                rt_r.freq -= 1;
-                                if rt_r.freq > 0 && rt_r.loc == rt_i {rt_r.loc = a[rt_i].2.unwrap()}
-                                if rt_r.freq > 0 {in_rec(&mut q, &mut rt_r);}
-                                else {h.remove(&rt_b);}
-                                o = false;
+                    // left bigram
+                    if let Some(lft_bg) = a.lft_bg(il) {
+                        if let Some(lft_rec) = h.get(&lft_bg) {
+                            let lft_rec = *lft_rec;
+                            let lft_pos = a.lft_pos(il).unwrap();
+                            if let Some(prev) = a[lft_pos].prev {a[prev].next = a[lft_pos].next;}
+                            if let Some(next) = a[lft_pos].next {a[next].prev = a[lft_pos].prev;}
+                            q.dequeue(lft_rec);
+                            (*lft_rec).freq -= 1;
+                            if (*lft_rec).freq < 2 {h.remove(&lft_bg);}
+                            else {
+                                if (*lft_rec).loc == lft_pos {(*lft_rec).loc = a[lft_pos].next.unwrap();}
+                                q.enqueue(lft_rec);
                             }
+                            a[lft_pos].prev = None;
+                            a[lft_pos].next = None;
                         }
-                        let nx_rt_i = get_rt(&a, rt_i);
-                        if nx_rt_i != 0 {
-                            a[nx_rt_i-1].1 = Some(i);
-                            a[i+1].2 = Some(nx_rt_i);
-                        }
-                    }
-                    else {
-                        a[i+1].2 = None;
-                        o = false;
-                        //}}}
                     }
 
-                    a[i].0 = Some(v as u32);
-                    a[rt_i].0 = None;
-                    if a[i].2 == None {break;}
-                    i = a[i].2.unwrap();
-                //}}}
+                    // right bigram
+                    if let Some(rgh_bg) = a.rgh_bg(ir) {
+                        if let Some(rgh_rec) = h.get(&rgh_bg) {
+                            let rgh_rec = *rgh_rec;
+                            if let Some(prev) = a[ir].prev {a[prev].next = a[ir].next;}
+                            if let Some(next) = a[ir].next {a[next].prev = a[ir].prev;}
+                            q.dequeue(rgh_rec);
+                            (*rgh_rec).freq -= 1;
+                            if (*rgh_rec).freq < 2 {h.remove(&rgh_bg);}
+                            else {
+                                if (*rgh_rec).loc == ir {(*rgh_rec).loc = a[ir].next.unwrap();}
+                                q.enqueue(rgh_rec);
+                            }
+                            a[ir].prev = None;
+                            a[ir].next = None;
+                        }
+                    }
+                    // replace bigram -> variable
+                    let jump = match a[il].next {Some(next) => a[next].next, None => None,};
+                    a[il].val = Some(v as u32);
+                    a[ir].val = None;
+                    a[il + 1].next = a.rgh_pos(ir);
+                    if let Some(rgh_ir) = a.rgh_pos(ir) {a[rgh_ir - 1].prev = Some(il);}
+                    if let Some(next) = a[il].next {
+                        if next != ir {
+                            il = next; ir = a.rgh_pos(il).unwrap();
+                        }
+                        else {
+                            if let Some(skip) = jump {
+                                a[il].next = Some(skip); a[skip].prev = Some(il);
+                                il = skip; ir = a.rgh_pos(skip).unwrap();
+                            }
+                            else {break;}
+                        }
+                    }
+                    else {break;}
+                    //}}}
                 }
 
-                // 置換・更新，逆方向，新出ペアのインクリメント
-                o = false;
+                // increment
                 loop {
                     //{{{
-                    // 右隣のペアの頻度をインクリメント
-                    if i < a.len()-1 && get_rt(&a, i) != 0 && !o {
-                        //{{{
-                        let rt_b: (u32, u32) = get_bg(&a, i);
-                        if h.contains_key(&rt_b) {
-                            let mut rt_r: &mut Rec = &mut **h.get(&rt_b).unwrap();
-                            a[rt_r.loc].1 = Some(i);
-                            a[i].2 = Some(rt_r.loc);
-                            rt_r.loc = i;
-                            out_rec(&mut q, &mut rt_r);
-                            rt_r.freq += 1;
-                            in_rec(&mut q, &mut rt_r);
+                    // right bigram
+                    if let Some(rgh_bg) = a.rgh_bg(il) {
+                        if let Some(rgh_rec) = h.get(&rgh_bg) {
+                            let rgh_rec = *rgh_rec;
+                            if (*rgh_rec).loc != il {
+                                a[il].next = Some((*rgh_rec).loc);
+                                a[(*rgh_rec).loc].prev = Some(il);
+                                q.dequeue(rgh_rec);
+                                (*rgh_rec).freq += 1;
+                                (*rgh_rec).loc = il;
+                                q.enqueue(rgh_rec);
+                            }
                         }
                         else {
-                            let mut new_r = Box::new(Rec {loc: i, freq: 1, prev: None, next: None});
-                            in_rec(&mut q, &mut new_r);
-                            let x: *mut Rec = Box::into_raw(new_r);
-                            h.insert(rt_b, x);
-                            a[i].2 = None;
+                            let rgh_rec = Box::into_raw(Box::new(Record {loc: il, freq: 1, prev: None, next: None}));
+                            h.insert(rgh_bg, rgh_rec);
+                            q.enqueue(rgh_rec);
+                            a[il].next = None;
                         }
-                        //}}}
                     }
 
-                    // 左隣のペアの頻度をインクリメント
-                    let mut pair_overlap = false;
-                    if i > 0 {
-                        //{{{
-                        let lt_i = get_lt(&a, i);
-                        o = match a[i].1 {Some(x) => if x == lt_i {true} else {false}, None => false};
-                        if o && get_bg(&a, lt_i) == get_bg(&a, i) {pair_overlap = true;}
-                        let lt_b: (u32, u32) = get_bg(&a, lt_i);
-                        if h.contains_key(&lt_b) {
-                            let mut lt_r: &mut Rec = &mut **h.get(&lt_b).unwrap();
-                            a[lt_r.loc].1 = Some(lt_i);
-                            if !o {a[lt_i].1 = None;}
-                            a[lt_i].2 = Some(lt_r.loc);
-                            out_rec(&mut q, &mut lt_r);
-                            lt_r.freq += 1;
-                            lt_r.loc = lt_i;
-                            in_rec(&mut q, &mut lt_r);
+                    // left bigram
+                    if let Some(lft_bg) = a.lft_bg(il) {
+                        let lft_pos = a.lft_pos(il).unwrap();
+                        if let Some(lft_rec) = h.get(&lft_bg) {
+                            let lft_rec = *lft_rec;
+                            a[lft_pos].next = Some((*lft_rec).loc);
+                            a[(*lft_rec).loc].prev = Some(lft_pos);
+                            q.dequeue(lft_rec);
+                            (*lft_rec).freq += 1;
+                            (*lft_rec).loc = lft_pos;
+                            q.enqueue(lft_rec);
                         }
                         else {
-                            let mut new_r = Box::new(Rec {loc: lt_i, freq: 1, prev: None, next: None});
-                            in_rec(&mut q, &mut new_r);
-                            let x: *mut Rec = Box::into_raw(new_r);
-                            h.insert(lt_b, x);
-                            if !o {a[lt_i].1 = None;}
-                            a[lt_i].2 = None;
+                            let lft_rec = Box::into_raw(Box::new(Record {loc: lft_pos, freq: 1, prev: None, next: None}));
+                            h.insert(lft_bg, lft_rec);
+                            q.enqueue(lft_rec);
+                            a[lft_pos].next = None;
                         }
-                        //}}}
                     }
 
-                    if a[i].1 == None {break;}
-                    let ii = i;
-                    i = a[i].1.unwrap();
-                    if !pair_overlap {a[ii].1 = None;}
-                //}}}
+                    // go to prev occ
+                    if let Some(prev) = a[il].prev {
+                        let old = il;
+                        il = prev;
+                        a[old].prev = None;
+                    }
+                    else {break;}
+                    //}}}
                 }
 
                 v += 1;
                 if v >= std::u32::MAX as usize {break;}
-                h.remove(&b);
-            }
+            }}
+            else {f -= 1;}
         }
 
         let end = start.elapsed();
         let mut s: Vec<u32> = Vec::new();
-        for c in &a {match (*c).0 {Some(x) => s.push(x), None => ()}}
+        for c in &a {match (*c).val {Some(x) => s.push(x), None => ()}}
 
-        // print
+
         println!("[Result: grammar construction]");
+        //{{{
         println!("Alphabet size     : {:?}", z.len());
         println!("Rule number       : {:?}", g.len());
         println!("Dictionary size   : {:?}", g.len() * 2);
         println!("Sequence length   : {:?}", s.len());
         println!("Total size        : {:?}", z.len() + g.len() * 2 + s.len());
         println!("{}.{:03} sec elapsed", end.as_secs(), end.subsec_nanos()/1_000_000);
+        //}}}
 
         // encode
         let mut bv: BitVec = BitVec::new();
@@ -426,6 +220,7 @@ fn main() {
         f.write(&bv.to_bytes()).unwrap();
 
         println!("[Result: compression]");
+        //{{{
         println!("Input data        : {:?} [bytes]", a.len());
         println!("Compressed data   : {:?} [bytes]", bv.len() / 8 + if bv.len() % 8 > 0 {1} else {0});
         println!("Compression ratio : {:.3} [%]", 100.0 * bv.len() as f64 / 8.0 / a.len() as f64);
@@ -435,6 +230,7 @@ fn main() {
             println!("Dictionary :\n {:?}", g);
             println!("Sequence   :\n {:?}", s);
         }
+        //}}}
 
     }
     else {

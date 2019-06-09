@@ -6,9 +6,9 @@ use std::io::{prelude::*, BufReader, BufWriter};
 use std::fs::File;
 use std::time::Instant;
 use bit_vec::BitVec;
-use rp::encode;
-use rp::comp;
-use rp::{cfg::*};
+use rp::module::encode;
+use rp::module::comp;
+use rp::module::{cfg::*};
 
 fn main() {
 

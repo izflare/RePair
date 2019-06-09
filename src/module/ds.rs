@@ -1,7 +1,20 @@
 use std::collections::HashMap;
+use std::cmp::{max, Ordering};
 
 #[derive(Hash, Eq, PartialEq, Debug)]
 pub struct Bigram {pub left: u32, pub right: u32,}
+
+impl Ord for Bigram {
+    fn cmp(&self, other: &Self) -> Ordering {
+        return max(self.left, self.right).cmp(&max(other.left, other.right));
+    }
+}
+
+impl PartialOrd for Bigram {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        return Some(self.cmp(other));
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct Bucket {pub val: Option<u32>, pub prev: Option<usize>, pub next: Option<usize>,}
@@ -99,6 +112,7 @@ pub trait FreqTable: std::ops::Index<usize> {
     unsafe fn enqueue(&mut self, r: *mut Record) -> ();
     unsafe fn dequeue(&mut self, r: *mut Record) -> ();
     fn create(&mut self, h: &HashMap<Bigram, *mut Record>) -> ();
+    unsafe fn sort(&mut self, f: usize, a: &Vec<Bucket>) -> ();
 }
 
 impl FreqTable for Vec<List> {
@@ -134,8 +148,23 @@ impl FreqTable for Vec<List> {
 
     fn create(&mut self, h: &HashMap<Bigram, *mut Record>) -> () {
         for r in h.values() {
-            unsafe {self.enqueue(*r);}
+            unsafe {
+                if (*(*r)).freq > 1 {self.enqueue(*r);}
+            }
         }
+    }
+
+    unsafe fn sort(&mut self, f: usize, a: &Vec<Bucket>) -> () {
+        let mut v: Vec<*mut Record> = Vec::new();
+        loop {
+            if let Some(r) = self.top(f) {
+                self.dequeue(r);
+                v.push(r);
+            }
+            else {break;}
+        }
+        v.sort_by(|x, y| (a.rgh_bg((**x).loc)).cmp(&a.rgh_bg((**y).loc)));
+        for r in &v {self.enqueue(*r);}
     }
     //}}}
 }

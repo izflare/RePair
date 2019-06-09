@@ -1,30 +1,48 @@
 use std::collections::HashMap;
 
-#[derive(Hash, Eq, PartialEq)]
+#[derive(Hash, Eq, PartialEq, Debug)]
 pub struct Bigram {pub left: u32, pub right: u32,}
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Bucket {pub val: Option<u32>, pub prev: Option<usize>, pub next: Option<usize>,}
 
 pub trait PairArray: std::ops::Index<usize> {
-    fn rgh_pos(&self, i: usize) -> Option<usize>;
     fn lft_pos(&self, i: usize) -> Option<usize>;
-    fn rgh_bg(&self, i: usize) -> Option<Bigram>;
+    fn rgh_pos(&self, i: usize) -> Option<usize>;
     fn lft_bg(&self, i: usize) -> Option<Bigram>;
-    fn create(&mut self, h: &mut HashMap<Bigram, *mut Record>, z: &mut Vec<u8>, s: &Vec<u8>) -> ();
+    fn rgh_bg(&self, i: usize) -> Option<Bigram>;
+    fn create(&mut self, h: &mut HashMap<Bigram, *mut Record>, z: &mut Vec<u8>, s: &Vec<u8>) -> usize;
+    fn print(&self) -> ();
 }
 
 impl PairArray for Vec<Bucket> {
     //{{{
-    fn rgh_pos(&self, i: usize) -> Option<usize> {
-        if self[i].val == None {self[i].next}
-        else if i + 1 < self.len() {Some(i + 1)}
-        else {None}
+    fn print(&self) -> () {
+        for i in 0..self.len() {
+            println!("{:2}: {:?}", i, self[i]);
+        }
+        println!("");
     }
 
     fn lft_pos(&self, i: usize) -> Option<usize> {
-        if self[i].val == None {self[i].prev}
-        else if i > 0 {Some(i - 1)}
+        if i == 0 {None}
+        else if self[i - 1].val == None {self[i - 1].prev}
+        else {Some(i - 1)}
+    }
+
+    fn rgh_pos(&self, i: usize) -> Option<usize> {
+        if i >= self.len() - 1 {None}
+        else if self[i + 1].val == None {self[i + 1].next}
+        else {Some(i + 1)}
+    }
+
+    fn lft_bg(&self, i: usize) -> Option<Bigram> {
+        if let Some(lft) = self.lft_pos(i) {
+            match (self[lft].val, self[i].val) {
+                (Some(x), Some(y)) => Some(Bigram {left: x, right: y,}),
+                _ => None
+            }
+        }
         else {None}
     }
 
@@ -38,29 +56,16 @@ impl PairArray for Vec<Bucket> {
         else {None}
     }
 
-    fn lft_bg(&self, i: usize) -> Option<Bigram> {
-        if let Some(lft) = self.lft_pos(i) {
-            match (self[lft].val, self[i].val) {
-                (Some(x), Some(y)) => Some(Bigram {left: x, right: y,}),
-                _ => None
-            }
-        }
-        else {None}
-    }
-
-    fn create(&mut self, h: &mut HashMap<Bigram, *mut Record>, z: &mut Vec<u8>, s: &Vec<u8>) -> () {
+    fn create(&mut self, h: &mut HashMap<Bigram, *mut Record>, z: &mut Vec<u8>, s: &Vec<u8>) -> usize {
         let mut d: HashMap<u8, u32> = HashMap::new();
-        let mut var: u32 = 1;
+        let mut var: u32 = 0;
         let mut f: usize = 1;
         for i in 0..self.len() {
-            if d.contains_key(&s[i]) {
-                self[i].val = Some(*d.entry(s[i]).or_insert(var));
-            }
-            else {
-                d.insert(s[i], var);
+            if !d.contains_key(&s[i]) {
                 z.push(s[i]);
                 var += 1;
             }
+            self[i].val = Some(*d.entry(s[i]).or_insert(var));
         }
         for i in (0..self.len()-1).rev() {
             if let Some(bg) = self.rgh_bg(i) {
@@ -78,12 +83,15 @@ impl PairArray for Vec<Bucket> {
                 else {h.insert(bg, Box::into_raw(Box::new(Record {loc: i, freq: 1, prev: None, next: None})));}
             }
         }
+        return f;
     }
     //}}}
 }
 
+#[derive(Debug)]
 pub struct Record {pub loc: usize, pub freq: usize, pub prev: Option<*mut Record>, pub next: Option<*mut Record>}
 
+#[derive(Clone)]
 pub struct List {pub head: Option<*mut Record>, pub tail: Option<*mut Record>}
 
 pub trait FreqTable: std::ops::Index<usize> {

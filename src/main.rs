@@ -59,8 +59,6 @@ fn main() {
         comp::compression(&s, &mut g, &minfreq);
 
         let end = start.elapsed();
-
-
         println!("[Result: grammar construction]");
         //{{{
         println!("Alphabet size     : {:?}", g.terminal.len());
@@ -96,9 +94,15 @@ fn main() {
 
     // decompression
     else {
+        let start = Instant::now();
+
         let bv: BitVec = BitVec::from_bytes(&s);
         let mut u: Vec<u8> = Vec::new();
         comp::decompression(&bv, &mut u);
+
+        let end = start.elapsed();
+        println!("[Result: decompression]");
+        println!("{}.{:03} sec elapsed", end.as_secs(), end.subsec_nanos()/1_000_000);
 
         // write
         let mut f = BufWriter::new(File::create(matches.value_of("input").unwrap().to_owned()+".dcp").unwrap());

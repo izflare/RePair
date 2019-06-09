@@ -3,6 +3,7 @@ extern crate strlib;
 
 use bit_vec::BitVec;
 use std::time::Instant;
+use std::cmp::{min, max};
 use strlib::delta;
 use super::{cfg::*};
 
@@ -26,19 +27,19 @@ pub fn encode(g: &Grammar, bv: &mut BitVec) -> () {
     let mut u = Vec::new();
     let mut ren = 1;
     for e in &g.rule {
-        let m = std::cmp::max(e[0], e[1]);
+        let m = max(e[0], e[1]);
         if prev <= m {
             v.push(m - prev + 1);
             ren += 1;
         }
         else {
-            v.push(prev - m + 1);
+            v.push(m);
             r.push(ren);
             ren = 1;
         }
         lr.push(e[0] >= e[1]);
         prev = m;
-        u.push(std::cmp::min(e[0], e[1]));
+        u.push(max(e[0], e[1]) - min(e[0], e[1]) + 1);
     }
     r.push(ren);
     let sbitlen = std::usize::MAX.count_ones() - (g.terminal.len() + g.rule.len()).leading_zeros();
@@ -109,17 +110,17 @@ pub fn decode(bv: &BitVec, w: &mut Vec<u8>) -> () {
     let mut ren = v[rpos];
     for i in 0..glen {
         if ren > 1 {
-            if lr[i] {g.rule.push(vec![prev + v[i] - 1, u[i]]);}
-            else {g.rule.push(vec![u[i], prev + v[i] - 1]);}
+            if lr[i] {g.rule.push(vec![prev + v[i] - 1, prev + v[i] - u[i]]);}
+            else {g.rule.push(vec![prev + v[i] - u[i], prev + v[i] - 1]);}
             ren -= 1;
             prev = prev + v[i] - 1;
         }
         else {
-            if lr[i] {g.rule.push(vec![prev - v[i] + 1, u[i]]);}
-            else {g.rule.push(vec![u[i], prev - v[i] + 1]);}
+            if lr[i] {g.rule.push(vec![v[i], v[i] - u[i] + 1]);}
+            else {g.rule.push(vec![v[i] - u[i] + 1, v[i]]);}
             rpos += 1;
             ren = v[rpos];
-            prev = prev - v[i] + 1;
+            prev = v[i];
         }
     }
     g.derive(w);

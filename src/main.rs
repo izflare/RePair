@@ -1,7 +1,8 @@
+#[macro_use]
 extern crate clap;
 extern crate bit_vec;
 
-use clap::{App, Arg};
+use clap::{App, Arg, ArgGroup};
 use std::io::{prelude::*, BufReader, BufWriter};
 use std::fs::File;
 use std::time::Instant;
@@ -15,20 +16,18 @@ fn main() {
     // args
     let app = App::new("RePair")
         //{{{
-        .version("0.1.1")
-        .author("flare")
-        .about("RePair compress/decompressor")
+        .version(crate_version!())
+        .author(crate_authors!())
+        .args_from_usage("-c 'compression mode'
+                         -d 'decompression mode'")
+        .group(ArgGroup::with_name("mode")
+            .args(&["c", "d"]).required(true))
         .arg(Arg::with_name("input")
             .help("Input sourse text file")
             .short("i")
             .long("input")
             .takes_value(true)                  
             .required(true)                     
-        )
-        .arg(Arg::with_name("decompress")
-            .help("Decompress")
-            .short("d")
-            .long("dcp")
         )
         .arg(Arg::with_name("minfreq")
             .help("Set minimum frequency of pairing operation (default: 3)")
@@ -50,7 +49,8 @@ fn main() {
     f.read_to_end(&mut s).expect("Unable to read");
 
     // compression
-    if !matches.is_present("decompress") {
+    // if !matches.is_present("decompress") {
+    if matches.is_present("c") {
         let start = Instant::now();
 
         let minfreq = 
@@ -93,7 +93,7 @@ fn main() {
     }
 
     // decompression
-    else {
+    else if matches.is_present("d") {
         let start = Instant::now();
 
         let bv: BitVec = BitVec::from_bytes(&s);
@@ -105,8 +105,11 @@ fn main() {
         println!("{}.{:03} sec elapsed", end.as_secs(), end.subsec_nanos()/1_000_000);
 
         // write
-        let mut f = BufWriter::new(File::create(matches.value_of("input").unwrap().to_owned()+".dcp").unwrap());
+        let mut f = BufWriter::new(File::create(matches.value_of("input").unwrap().to_owned()+".d").unwrap());
         f.write(&u).unwrap();
+    }
+    else {
+        panic!("mdoe error");
     }
 
 }

@@ -35,6 +35,11 @@ fn main() {
             .long("min")
             .takes_value(true)
         )
+        .arg(Arg::with_name("sort")
+            .help("Enable bigram sorting")
+            .short("s")
+            .long("sort")
+        )
         .arg(Arg::with_name("print")
             .help("Print the detail of constructed grammar")
             .short("p")
@@ -49,14 +54,13 @@ fn main() {
     f.read_to_end(&mut s).expect("Unable to read");
 
     // compression
-    // if !matches.is_present("decompress") {
     if matches.is_present("c") {
         let start = Instant::now();
 
         let minfreq = 
                 std::cmp::max(2, match matches.value_of("minfreq") {Some(x) => (*x).parse::<usize>().unwrap(), None => 3,});
         let mut g: Grammar = Grammar::new();
-        comp::compression(&s, &mut g, &minfreq);
+        comp::compression(&s, &mut g, minfreq, matches.is_present("sort"));
 
         let end = start.elapsed();
         println!("[Result: grammar construction]");

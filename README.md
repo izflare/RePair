@@ -26,7 +26,7 @@ cargo build --release
 
 ```
 USAGE:
-    rp [FLAGS] [OPTIONS] --input <input> <-c|-d>
+    ./target/release/rp [FLAGS] [OPTIONS] --input <input> <-c|-d>
 
 FLAGS:
     -c               Compression mode

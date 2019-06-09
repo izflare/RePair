@@ -2,8 +2,7 @@
 
 ### Description
 
-This is an implementation of RePair, which is a famous algorithm of grammar compression method.  
-RePair is proposed in
+This is an implementation of RePair, a famous grammar compression method proposed in
 
 > N. Jesper Larsson and Alistair Moffat: _Off-line dictionary-based compression._ Proceedings of the IEEE, 88(11):1722-1732, 2000.
 
@@ -27,18 +26,23 @@ cargo build --release
 
 ```
 USAGE:
-    cd target/release
-    ./rp [FLAGS] [OPTIONS] --input <input>
+    rp [FLAGS] [OPTIONS] --input <input> <-c|-d>
 
 FLAGS:
-    -d, --dcp        Decompress
+    -c               Compression mode
+    -d               Decompression mode
     -h, --help       Prints help information
     -p, --print      Print the detail of constructed grammar
+    -s, --sort       Enable bigram sorting
     -V, --version    Prints version information
 
 OPTIONS:
     -i, --input <input>    Input sourse text file
     -m, --min <minfreq>    Set minimum frequency of pairing operation (default: 3)
+
+OUTPUTS:
+    <input>.rp   Compressed file
+    <input>.d    Decompressed file
 ```
 
 

@@ -18,8 +18,8 @@ fn main() {
         //{{{
         .version(crate_version!())
         .author(crate_authors!())
-        .args_from_usage("-c 'compression mode'
-                         -d 'decompression mode'")
+        .args_from_usage("-c 'Compression mode'
+                         -d 'Decompression mode'")
         .group(ArgGroup::with_name("mode")
             .args(&["c", "d"]).required(true))
         .arg(Arg::with_name("input")

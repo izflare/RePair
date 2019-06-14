@@ -58,7 +58,7 @@ fn main() {
         let start = Instant::now();
 
         let minfreq = 
-                std::cmp::max(2, match matches.value_of("minfreq") {Some(x) => (*x).parse::<usize>().unwrap(), None => 3,});
+                std::cmp::max(2, match matches.value_of("minfreq") {Some(x) => (*x).parse::<usize>().unwrap(), None => 2,});
         let mut g: Grammar = Grammar::new();
         comp::compression(&s, &mut g, minfreq, matches.is_present("sort"));
 

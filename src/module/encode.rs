@@ -4,17 +4,12 @@ extern crate strlib;
 use bit_vec::BitVec;
 use std::time::Instant;
 use std::cmp::{min, max};
-use strlib::delta;
-use strlib::gamma;
-use strlib::ffenc;
+use strlib::{fixed, block_fixed};
 use super::{cfg::*};
 
 pub fn encode(g: &Grammar, bv: &mut BitVec) -> () {
 
     let start = Instant::now();
-
-    let mut z = BitVec::new();
-    ffenc::encode(&g.terminal.iter().map(|x| *x as u32).collect::<Vec<u32>>(), &mut z);
 
     let mut deltas: Vec<u32> = Vec::new();
     let mut starting_values: Vec<u32> = Vec::new();
@@ -27,11 +22,11 @@ pub fn encode(g: &Grammar, bv: &mut BitVec) -> () {
     for i in 0..g.rule.len() {
         let ab = &g.rule[i];
         let a = max(ab[0], ab[1]);
-        deltas_minimums.push(a - min(ab[0], ab[1]) + 1);
+        deltas_minimums.push(a - min(ab[0], ab[1]));
         max_first.push(a == ab[0]);
 
         if a >= last_max {
-            deltas.push(a - last_max + 1);
+            deltas.push(a - last_max);
         }
         else {
             starting_values.push(a);
@@ -41,103 +36,98 @@ pub fn encode(g: &Grammar, bv: &mut BitVec) -> () {
         last_max = a;
     }
 
-    ffenc::to_bits(z.len() as u32, 32, bv);
+    fixed::to_bv(2 as u32, 8, bv); // encoding mode number
+    let mut z = BitVec::new();
+    fixed::encode(&g.terminal.iter().map(|x| *x as u32).collect::<Vec<u32>>(), &mut z);
+    fixed::to_bv(z.len() as u32, 32, bv);
     for b in &z {bv.push(b);}
 
-    let mut deltas_bits = BitVec::new();
-    gamma::encode(&deltas, &mut deltas_bits);
-    ffenc::to_bits(deltas_bits.len() as u32, 32, bv);
-    for b in &deltas_bits {bv.push(b);}
+    let mut v: Vec<u32> = Vec::new();
+    let blocksize = 6;
+    v.push(deltas.len() as u32);
+    v.push(starting_values.len() as u32);
+    for e in &deltas {v.push(*e);}
+    for e in &starting_values {v.push(*e);}
+    for e in &starting_points {v.push(*e);}
+    for e in &deltas_minimums {v.push(*e);}
 
-    let mut starting_values_bits = BitVec::new();
-    ffenc::encode(&starting_values, &mut starting_values_bits);
-    ffenc::to_bits(starting_values_bits.len() as u32, 32, bv);
-    for b in &starting_values_bits {bv.push(b);}
+    let mut v_bits = BitVec::new();
+    block_fixed::encode(&v, blocksize, &mut v_bits);
+    fixed::to_bv(v_bits.len() as u32, 32, bv);
+    for b in &v_bits {bv.push(b);}
 
-    let mut starting_points_bits = BitVec::new();
-    gamma::encode(&starting_points, &mut starting_points_bits);
-    ffenc::to_bits(starting_points_bits.len() as u32, 32, bv);
-    for b in &starting_points_bits {bv.push(b);}
-
-    let mut deltas_minimums_bits = BitVec::new();
-    ffenc::encode(&deltas_minimums, &mut deltas_minimums_bits);
-    ffenc::to_bits(deltas_minimums_bits.len() as u32, 32, bv);
-    for b in &deltas_minimums_bits {bv.push(b);}
-
-    ffenc::to_bits(max_first.len() as u32, 32, bv);
+    fixed::to_bv(max_first.len() as u32, 32, bv);
     for b in &max_first {bv.push(b);}
 
-    ffenc::encode(&g.sequence, bv);
+    block_fixed::encode(&g.sequence, blocksize, bv);
 
     let end = start.elapsed();
-    println!("[Result: bit encoding]");
-    println!("Increasing seq    : {:?}", starting_points.len() + 1);
-    println!("Bit length        : {:?} [bits]", bv.len());
+    println!("[Bit encoding]");
+    println!("Increasing sequences : {:?}", starting_points.len());
+    println!("Bit length           : {:?} [bits]", bv.len());
     println!("{}.{:03} sec elapsed", end.as_secs(), end.subsec_nanos()/1_000_000);
 }
 
-// not impl yet
-pub fn decode(bv: &BitVec, w: &mut Vec<u8>) -> () {
-    let mut v: Vec<u32> = Vec::new();
-    let mut g: Grammar = Grammar::new();
+pub fn decode(bv: &BitVec, g: &mut Grammar) -> () {
+
     let mut zlen = 0;
-    let mut c: u32 = 0;
-    let mut glen = 0;
-    let mut sbitlen = 0;
-    let mut u: Vec<u32> = Vec::new();
-    let mut lr: BitVec = BitVec::new();
-    let mut slen = 0;
-    let mut d: BitVec = BitVec::new();
+    let mut z = BitVec::new();
+    let mut vbitslen = 0;
+    let mut vbits = BitVec::new();
+    let mut dlen = 0;
+    let mut max_first = BitVec::new();
+    let mut s = BitVec::new();
 
-    for i in 0..bv.len() {
-        if i < 8 {
-            zlen <<= 1; if bv[i] {zlen += 1;}
-        }
-        else if i < 8 + zlen * 8 {
-            c <<= 1; if bv[i] {c += 1;}
-            if i % 8 == 7 {g.terminal.push(c as u8); c = 0;}
-        }
-        else if i < 40 + zlen * 8 {
-            glen <<= 1; if bv[i] {glen += 1;}
-        }
-        else if i < 72 + zlen * 8 {
-            sbitlen <<= 1; if bv[i] {sbitlen += 1;}
-        }
-        else if i < 72 + zlen * 8 + glen * sbitlen {
-            c <<= 1; if bv[i] {c += 1;}
-            if (i - (72 + zlen * 8)) % sbitlen == sbitlen - 1 {u.push(c as u32); c = 0;}
-        }
-        else if i < 72 + zlen * 8 + glen * sbitlen + glen {
-            lr.push(bv[i]);
-        }
-        else if i < 104 + zlen * 8 + glen * sbitlen + glen {
-            slen <<= 1; if bv[i] {slen += 1;}
-        }
-        else if i < 104 + zlen * 8 + glen * sbitlen + glen + slen * sbitlen {
-            c <<= 1; if bv[i] {c += 1;}
-            if (i - (104 + zlen * 8 + glen * sbitlen + glen)) % sbitlen == sbitlen - 1 {g.sequence.push(c as u32); c = 0;}
-        }
-        else {d.push(bv[i]);}
+    for i in 8..bv.len() {
+        if i < 8 + 32 {zlen <<= 1; if bv[i] {zlen += 1;}}
+        else if i < 8 + 32 + zlen {z.push(bv[i]);}
+        else if i < 8 + 32 * 2 + zlen {vbitslen <<= 1; if bv[i] {vbitslen += 1;}}
+        else if i < 8 + 32 * 2 + zlen + vbitslen {vbits.push(bv[i]);}
+        else if i < 8 + 32 * 3 + zlen + vbitslen {dlen <<= 1; if bv[i] {dlen += 1;}}
+        else if i < 8 + 32 * 3 + zlen + vbitslen + dlen {max_first.push(bv[i]);}
+        else {s.push(bv[i]);}
     }
-    delta::decode(&d, &mut v);
-    let mut prev = 0;
-    let mut rpos = glen;
-    let mut ren = v[rpos];
-    for i in 0..glen {
-        if ren > 1 {
-            if lr[i] {g.rule.push(vec![prev + v[i] - 1, prev + v[i] - u[i]]);}
-            else {g.rule.push(vec![prev + v[i] - u[i], prev + v[i] - 1]);}
-            ren -= 1;
-            prev = prev + v[i] - 1;
-        }
-        else {
-            if lr[i] {g.rule.push(vec![v[i], v[i] - u[i] + 1]);}
-            else {g.rule.push(vec![v[i] - u[i] + 1, v[i]]);}
-            rpos += 1;
-            ren = v[rpos];
-            prev = v[i];
-        }
+
+    let mut zvec: Vec<u32> = Vec::new();
+    fixed::decode(&z, &mut zvec);
+    g.terminal = zvec.iter().map(|x| *x as u8).collect::<Vec<u8>>();
+
+    block_fixed::decode(&s, &mut g.sequence);
+    if let Some(last) = g.sequence.last() {if *last == 0 {g.sequence.pop();}}
+
+    let mut v: Vec<u32> = Vec::new();
+    block_fixed::decode(&vbits, &mut v);
+
+    let mut deltas: Vec<u32> = Vec::new();
+    let mut starting_values: Vec<u32> = Vec::new();
+    let mut starting_points: Vec<u32> = Vec::new();
+    let mut deltas_minimums: Vec<u32> = Vec::new();
+
+    let deltas_len = v[0] as usize;
+    let incr_len = v[1] as usize;
+    for i in 2..v.len() {
+        if i < 2 + deltas_len {deltas.push(v[i]);}
+        else if i < 2 + deltas_len + incr_len {starting_values.push(v[i]);}
+        else if i < 2 + deltas_len + incr_len * 2 {starting_points.push(v[i]);}
+        else {deltas_minimums.push(v[i]);}
     }
-    g.derive(w);
+
+    let mut last_max: u32 = 0;
+    let mut start_pos = starting_points[0] as usize;
+
+    let mut deltas_i = 0;
+    let mut incr_i = 0;
+    for i in 0..dlen {
+        if i == start_pos {
+            if let Some(lm) = starting_values.get(incr_i) {
+                last_max = *lm;
+                incr_i += 1; 
+                if let Some(spd) = starting_points.get(incr_i) {start_pos += *spd as usize;}
+            }
+        }
+        else {last_max += deltas[deltas_i]; deltas_i += 1;}
+        g.rule.push(if max_first[i] {vec![last_max, last_max - deltas_minimums[i]]} 
+                    else {vec![last_max - deltas_minimums[i], last_max]});
+    }
+
 }
-

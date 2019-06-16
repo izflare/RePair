@@ -160,5 +160,10 @@ pub fn compression(s: &Vec<u8>, g: &mut Grammar, minfreq: usize, sorting: bool) 
 }
 
 pub fn decompression(bv: &BitVec, u: &mut Vec<u8>) -> () {
+
+    let mut g: Grammar = Grammar::new();
+
     encode::decode(bv, u);
+
+    g.derive(w);
 }

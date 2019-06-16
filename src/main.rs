@@ -2,14 +2,14 @@
 extern crate clap;
 extern crate bit_vec;
 
-use clap::{App, Arg, ArgGroup};
+use clap::{App, Arg, ArgGroup, AppSettings};
 use std::io::{prelude::*, BufReader, BufWriter};
 use std::fs::File;
 use std::time::Instant;
 use bit_vec::BitVec;
-use rp::module::encode;
-use rp::module::comp;
+use rp::module::compress;
 use rp::module::{cfg::*};
+use rp::module::encode;
 
 fn main() {
 
@@ -18,33 +18,16 @@ fn main() {
         //{{{
         .version(crate_version!())
         .author(crate_authors!())
+        .setting(AppSettings::DeriveDisplayOrder)
         .args_from_usage("-c 'Compression mode'
                          -d 'Decompression mode'")
-        .group(ArgGroup::with_name("mode")
-            .args(&["c", "d"]).required(true))
-        .arg(Arg::with_name("input")
-            .help("Input sourse text file")
-            .short("i")
-            .long("input")
-            .takes_value(true)                  
-            .required(true)                     
-        )
-        .arg(Arg::with_name("minfreq")
-            .help("Set minimum frequency of pairing operation (default: 3)")
-            .short("m")
-            .long("min")
-            .takes_value(true)
-        )
-        .arg(Arg::with_name("sort")
-            .help("Enable bigram sorting")
-            .short("s")
-            .long("sort")
-        )
-        .arg(Arg::with_name("print")
-            .help("Print the detail of constructed grammar")
-            .short("p")
-            .long("print")
-        );
+        .group(ArgGroup::with_name("mode").args(&["c", "d"]).required(true))
+        .arg(Arg::from_usage("-i --input [FILE] 'Input sourse file'").required(true))
+        .arg(Arg::from_usage("-m --minfreq [INTEGER] 'Set minimum frequency of pairing operation'").default_value("2"))
+        .arg(Arg::from_usage("-e --encode [MODE] 'Set encoding mode'")
+             .possible_values(&["u32bits", "fixed", "sorting"])
+             .default_value("sorting"))
+        .arg(Arg::from_usage("-p --print 'Print the detail of constructed grammar'"));
         //}}}
     let matches = app.get_matches();
 
@@ -59,33 +42,35 @@ fn main() {
 
         let minfreq = 
                 std::cmp::max(2, match matches.value_of("minfreq") {Some(x) => (*x).parse::<usize>().unwrap(), None => 2,});
+        let mode = matches.value_of("encode").unwrap();
+
         let mut g: Grammar = Grammar::new();
-        comp::compression(&s, &mut g, minfreq, matches.is_present("sort"));
+        compress::compress(&s, &mut g, minfreq, mode == "sorting");
 
         let end = start.elapsed();
-        println!("[Result: grammar construction]");
+        println!("[Grammar construction]");
         //{{{
-        println!("Alphabet size     : {:?}", g.terminal.len());
-        println!("Rule number       : {:?}", g.rule.len());
-        println!("Dictionary size   : {:?}", g.rule.len() * 2);
-        println!("Sequence length   : {:?}", g.sequence.len());
-        println!("Total size        : {:?}", g.terminal.len() + g.rule.len() * 2 + g.sequence.len());
+        println!("Alphabet size        : {:?}", g.terminal.len());
+        println!("Rule number          : {:?}", g.rule.len());
+        println!("Dictionary size      : {:?}", g.rule.len() * 2);
+        println!("Sequence length      : {:?}", g.sequence.len());
+        println!("Total grammar size   : {:?}", g.terminal.len() + g.rule.len() * 2 + g.sequence.len());
         println!("{}.{:03} sec elapsed", end.as_secs(), end.subsec_nanos()/1_000_000);
         //}}}
 
         // encode
         let mut bv: BitVec = BitVec::new();
-        encode::encode(&g, &mut bv);
+        encode::encode(&g, mode, &mut bv);
 
         // write
         let mut f = BufWriter::new(File::create(matches.value_of("input").unwrap().to_owned()+".rp").unwrap());
         f.write(&bv.to_bytes()).unwrap();
 
-        println!("[Result: compression]");
+        println!("[Compression]");
         //{{{
-        println!("Input data        : {:?} [bytes]", s.len());
-        println!("Compressed data   : {:?} [bytes]", bv.len() / 8 + if bv.len() % 8 > 0 {1} else {0});
-        println!("Compression ratio : {:.3} [%]", 100.0 * bv.len() as f64 / 8.0 / s.len() as f64);
+        println!("Input data           : {:?} [bytes]", s.len());
+        println!("Compressed data      : {:?} [bytes]", bv.len() / 8 + if bv.len() % 8 > 0 {1} else {0});
+        println!("Compression ratio    : {:.3} [%]", 100.0 * bv.len() as f64 / 8.0 / s.len() as f64);
         if matches.is_present("print") {
             println!("\n[Grammar detail]");
             println!("Alphabet   :\n {:?}", g.terminal);
@@ -98,14 +83,18 @@ fn main() {
 
     // decompression
     else if matches.is_present("d") {
+
+        println!("[Decompression]");
         let start = Instant::now();
 
         let bv: BitVec = BitVec::from_bytes(&s);
+        let mut g: Grammar = Grammar::new();
+        encode::decode(&bv, &mut g);
+
         let mut u: Vec<u8> = Vec::new();
-        comp::decompression(&bv, &mut u);
+        g.derive(&mut u);
 
         let end = start.elapsed();
-        println!("[Result: decompression]");
         println!("{}.{:03} sec elapsed", end.as_secs(), end.subsec_nanos()/1_000_000);
 
         // write
@@ -113,7 +102,7 @@ fn main() {
         f.write(&u).unwrap();
     }
     else {
-        panic!("mdoe error");
+        panic!("mode error");
     }
 
 }

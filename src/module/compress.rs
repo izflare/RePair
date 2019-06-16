@@ -1,12 +1,10 @@
 extern crate bit_vec;
 
 use std::collections::HashMap;
-use bit_vec::BitVec;
-use super::encode;
 use super::{ds::*};
 use super::{cfg::*};
 
-pub fn compression(s: &Vec<u8>, g: &mut Grammar, minfreq: usize, sorting: bool) -> () {
+pub fn compress(s: &Vec<u8>, g: &mut Grammar, minfreq: usize, sorting: bool) -> () {
 
     // preprocessing
     let mut a: Vec<Bucket> = vec![Bucket {val: None, prev: None, next: None}; s.len()];
@@ -159,11 +157,3 @@ pub fn compression(s: &Vec<u8>, g: &mut Grammar, minfreq: usize, sorting: bool) 
     for c in &a {match (*c).val {Some(x) => g.sequence.push(x), None => ()}}
 }
 
-pub fn decompression(bv: &BitVec, u: &mut Vec<u8>) -> () {
-
-    let mut g: Grammar = Grammar::new();
-
-    encode::decode(bv, u);
-
-    g.derive(w);
-}

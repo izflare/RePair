@@ -34,7 +34,8 @@ FLAGS:
 OPTIONS:
     -i, --input <input>    Input sourse text file
     -m, --minfreq <INTEGER>    Set minimum frequency of pairing operation [default: 2]
-    -e, --encode <MODE>        Set encoding mode [default: sorting]  [possible values: u32bits, fixed, sorting]
+    -e, --encode <MODE>        Set encoding mode [default: sorting]  
+                               [possible values: u32bits, fixed, sorting]
 ```
 
 The command with `-c` flag produces the compressed file `<input>.rp`.  

@@ -2,6 +2,7 @@ extern crate bit_vec;
 extern crate strlib;
 
 pub mod u32bits;
+pub mod fble;
 pub mod sorting;
 
 use bit_vec::BitVec;
@@ -23,6 +24,7 @@ pub fn encode(g: &Grammar, mode: &str, bv: &mut BitVec) -> () {
     }
     else if mode == "fixed" {
         fixed::to_bv(1, 8, bv);
+        encode::fble::encode(g, bv);
     }
     else if mode == "sorting" {
         fixed::to_bv(2, 8, bv);
@@ -50,12 +52,13 @@ pub fn decode(bv: &BitVec, g: &mut Grammar) -> () {
     }
     else if mode_number == 1 {
         mode = "fixed";
+        encode::fble::decode(bv, g);
     }
     else if mode_number == 2 {
         mode = "sorting";
         encode::sorting::decode(bv, g);
     }
 
-    println!("Encoding mode        : {}", mode);
+    println!("Encoding mode : {}", mode);
 
 }

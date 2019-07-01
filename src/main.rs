@@ -23,11 +23,11 @@ fn main() {
                          -d 'Decompression mode'")
         .group(ArgGroup::with_name("mode").args(&["c", "d"]).required(true))
         .arg(Arg::from_usage("-i --input [FILE] 'Input sourse file'").required(true))
-        .arg(Arg::from_usage("-m --minfreq [INTEGER] 'Set minimum frequency of pairing operation'").default_value("2"))
-        .arg(Arg::from_usage("-e --encode [MODE] 'Set encoding mode'")
+        .arg(Arg::from_usage("-m --minfreq [INTEGER] 'Sets minimum frequency of pairing operation'").default_value("2"))
+        .arg(Arg::from_usage("-e --encode [MODE] 'Sets encoding mode'")
              .possible_values(&["u32bits", "fixed", "sorting"])
              .default_value("sorting"))
-        .arg(Arg::from_usage("-p --print 'Print the detail of constructed grammar'"));
+        .arg(Arg::from_usage("-p --print 'Prints the detail of constructed grammar'"));
         //}}}
     let matches = app.get_matches();
 

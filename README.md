@@ -27,14 +27,14 @@ USAGE:
 FLAGS:
     -c               Compression mode
     -d               Decompression mode
+    -p, --print      Prints the detail of constructed grammar
     -h, --help       Prints help information
-    -p, --print      Print the detail of constructed grammar
     -V, --version    Prints version information
 
 OPTIONS:
     -i, --input <FILE>    Input sourse text file
-    -m, --minfreq <INTEGER>    Set minimum frequency of pairing operation [default: 2]
-    -e, --encode <MODE>        Set encoding mode [default: sorting]  
+    -m, --minfreq <INTEGER>    Sets minimum frequency of pairing operation [default: 2]
+    -e, --encode <MODE>        Sets encoding mode [default: sorting]  
                                [possible values: u32bits, fixed, sorting]
 ```
 

@@ -3,6 +3,7 @@ extern crate strlib;
 
 pub mod text_32bit;
 pub mod text_fble;
+pub mod text_huffman_coding;
 pub mod ps_pge;
 
 use bit_vec::BitVec;
@@ -28,7 +29,7 @@ pub fn encode(g: &Grammar, mode: &str, bv: &mut BitVec) -> () {
     }
     else if mode == "Huffman_coding" {
         fble::to_bv(2, 8, bv);
-        // encode::fble::encode(g, bv);
+        encode::text_huffman_coding::encode(g, bv);
     }
     else if mode == "PS+PGE" {
         fble::to_bv(3, 8, bv);
@@ -68,7 +69,7 @@ pub fn decode(bv: &BitVec, g: &mut Grammar) -> () {
     }
     else if mode_number == 2 {
         mode = "Huffman_coding";
-        // encode::fble::decode(bv, g);
+        encode::text_huffman_coding::decode(bv, g);
     }
     else if mode_number == 3 {
         mode = "PS+PGE";

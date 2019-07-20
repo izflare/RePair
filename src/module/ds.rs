@@ -1,12 +1,16 @@
 use std::collections::HashMap;
-use std::cmp::{max, Ordering};
+use std::cmp::{max, min, Ordering};
 
 #[derive(Hash, Eq, PartialEq, Debug)]
 pub struct Bigram {pub left: u32, pub right: u32,}
 
 impl Ord for Bigram {
     fn cmp(&self, other: &Self) -> Ordering {
-        return max(self.left, self.right).cmp(&max(other.left, other.right));
+        let max_s = max(self.left, self.right);
+        let max_o = max(other.left, other.right);
+        let min_s = min(self.left, self.right);
+        let min_o = min(other.left, other.right);
+        return if max_s == max_o {min_s.cmp(&min_o)} else {max_s.cmp(&max_o)};
     }
 }
 

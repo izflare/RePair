@@ -2,16 +2,16 @@ extern crate bit_vec;
 extern crate strlib;
 
 use bit_vec::BitVec;
-use strlib::fixed;
+use strlib::fble;
 use super::super::{cfg::*};
 
 pub fn encode(g: &Grammar, bv: &mut BitVec) -> () {
 
-    fixed::to_bv(g.terminal.len() as u32, 32, bv);
-    for e in &g.terminal {fixed::to_bv(*e as u32, 8, bv);}
-    fixed::to_bv(g.rule.len() as u32, 32, bv);
-    for e in &g.rule {fixed::to_bv(e[0] as u32, 32, bv); fixed::to_bv(e[1] as u32, 32, bv);}
-    for e in &g.sequence {fixed::to_bv(*e, 32, bv);}
+    fble::to_bv(g.terminal.len() as u32, 32, bv);
+    for e in &g.terminal {fble::to_bv(*e as u32, 8, bv);}
+    fble::to_bv(g.rule.len() as u32, 32, bv);
+    for e in &g.rule {fble::to_bv(e[0] as u32, 32, bv); fble::to_bv(e[1] as u32, 32, bv);}
+    for e in &g.sequence {fble::to_bv(*e, 32, bv);}
 
 }
 

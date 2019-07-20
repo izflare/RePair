@@ -35,9 +35,9 @@ OPTIONS:
     -i, --input <FILE>    Input sourse text file
     -m, --minfreq <INTEGER>    Sets minimum frequency of pairing operation [default: 2]
     -e, --encode <MODE>        Sets encoding mode [default: sorting]  
-                               [possible values: u32bits, fixed, sorting]
+                               [possible values: 32bit, FBLE, Huffan_coding, PS+PGE, POPPT+IBLE, POPPT+PGE]
 ```
 
 The command with `-c` flag produces the compressed file `<FILE>.rp`.  
-The command with `-d` flag produces the decompressed file `<FILE>.d`.
+The command with `-d` flag produces the decompressed file `<FILE>.dcp`.
 

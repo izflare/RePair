@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use super::{ds::*};
 use super::{cfg::*};
 
-pub fn compress(s: &Vec<u8>, g: &mut Grammar, minfreq: usize, sorting: bool) -> () {
+pub fn compress(s: &Vec<u8>, g: &mut Grammar, minfreq: usize, ps: bool) -> () {
 
     // preprocessing
     let mut a: Vec<Bucket> = vec![Bucket {val: None, prev: None, next: None}; s.len()];
@@ -18,7 +18,7 @@ pub fn compress(s: &Vec<u8>, g: &mut Grammar, minfreq: usize, sorting: bool) -> 
     let mut init: bool = true;
     loop {
         if f < minfreq {break;}
-        if init && sorting {if let Some(_) = q.top(f) { unsafe {q.sort(f, &a); init = false;}}}
+        if init && ps {if let Some(_) = q.top(f) { unsafe {q.sort(f, &a); init = false;}}}
         if let Some(r) = q.top(f) { unsafe {
             // the most frequent bigram
             let bg: Bigram = a.rgh_bg((*r).loc).unwrap();

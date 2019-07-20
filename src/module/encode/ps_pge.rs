@@ -3,7 +3,7 @@ extern crate strlib;
 
 use bit_vec::BitVec;
 use std::cmp::{min, max};
-use strlib::{fixed, block_fixed};
+use strlib::{fble, packed_gamma};
 use super::super::{cfg::*};
 
 pub fn encode(g: &Grammar, bv: &mut BitVec) -> () {
@@ -34,8 +34,8 @@ pub fn encode(g: &Grammar, bv: &mut BitVec) -> () {
     }
 
     let mut z = BitVec::new();
-    fixed::encode(&g.terminal.iter().map(|x| *x as u32).collect::<Vec<u32>>(), &mut z);
-    fixed::to_bv(z.len() as u32, 32, bv);
+    fble::encode(&g.terminal.iter().map(|x| *x as u32).collect::<Vec<u32>>(), &mut z);
+    fble::to_bv(z.len() as u32, 32, bv);
     for b in &z {bv.push(b);}
 
     let mut v: Vec<u32> = Vec::new();
@@ -48,14 +48,14 @@ pub fn encode(g: &Grammar, bv: &mut BitVec) -> () {
     for e in &deltas_minimums {v.push(*e);}
 
     let mut v_bits = BitVec::new();
-    block_fixed::encode(&v, blocksize, &mut v_bits);
-    fixed::to_bv(v_bits.len() as u32, 32, bv);
+    packed_gamma::encode(&v, blocksize, &mut v_bits);
+    fble::to_bv(v_bits.len() as u32, 32, bv);
     for b in &v_bits {bv.push(b);}
 
-    fixed::to_bv(max_first.len() as u32, 32, bv);
+    fble::to_bv(max_first.len() as u32, 32, bv);
     for b in &max_first {bv.push(b);}
 
-    block_fixed::encode(&g.sequence, blocksize, bv);
+    packed_gamma::encode(&g.sequence, blocksize, bv);
 
     println!("Increasing sequences : {:?}", starting_points.len());
 }
@@ -81,14 +81,14 @@ pub fn decode(bv: &BitVec, g: &mut Grammar) -> () {
     }
 
     let mut zvec: Vec<u32> = Vec::new();
-    fixed::decode(&z, &mut zvec);
+    fble::decode(&z, &mut zvec);
     g.terminal = zvec.iter().map(|x| *x as u8).collect::<Vec<u8>>();
 
-    block_fixed::decode(&s, &mut g.sequence);
+    packed_gamma::decode(&s, &mut g.sequence);
     if let Some(last) = g.sequence.last() {if *last == 0 {g.sequence.pop();}}
 
     let mut v: Vec<u32> = Vec::new();
-    block_fixed::decode(&vbits, &mut v);
+    packed_gamma::decode(&vbits, &mut v);
 
     let mut deltas: Vec<u32> = Vec::new();
     let mut starting_values: Vec<u32> = Vec::new();

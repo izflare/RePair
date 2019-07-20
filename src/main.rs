@@ -25,9 +25,10 @@ fn main() {
         .arg(Arg::from_usage("-i --input [FILE] 'Input sourse file'").required(true))
         .arg(Arg::from_usage("-m --minfreq [INTEGER] 'Sets minimum frequency of pairing operation'").default_value("2"))
         .arg(Arg::from_usage("-e --encode [MODE] 'Sets encoding mode'")
-             .possible_values(&["u32bits", "fixed", "sorting"])
-             .default_value("sorting"))
-        .arg(Arg::from_usage("-p --print 'Prints the detail of constructed grammar'"));
+             .possible_values(&["32bit", "FBLE", "Huffman_coding", "PS+PGE", "POPPT+IFBLE", "POPPT+PGE"])
+             .default_value("PS+PGE"))
+        .arg(Arg::from_usage("-p --print 'Prints the detail of constructed grammar'"))
+        .arg(Arg::from_usage("--debug 'Debug mode'"));
         //}}}
     let matches = app.get_matches();
 
@@ -45,7 +46,7 @@ fn main() {
         let mode = matches.value_of("encode").unwrap();
 
         let mut g: Grammar = Grammar::new();
-        compress::compress(&s, &mut g, minfreq, mode == "sorting");
+        compress::compress(&s, &mut g, minfreq, mode == "PS+PGE");
 
         let end = start.elapsed();
         println!("[Grammar construction]");
@@ -67,17 +68,33 @@ fn main() {
         f.write(&bv.to_bytes()).unwrap();
 
         println!("[Compression]");
-        //{{{
         println!("Input data           : {:?} [bytes]", s.len());
         println!("Compressed data      : {:?} [bytes]", bv.len() / 8 + if bv.len() % 8 > 0 {1} else {0});
         println!("Compression ratio    : {:.3} [%]", 100.0 * bv.len() as f64 / 8.0 / s.len() as f64);
-        if matches.is_present("print") {
+        if matches.is_present("p") {
             println!("\n[Grammar detail]");
             println!("Alphabet   :\n {:?}", g.terminal);
             println!("Dictionary :\n {:?}", g.rule);
             println!("Sequence   :\n {:?}", g.sequence);
         }
+
+        if matches.is_present("debug") {
+        //{{{
+            println!("[Debug mode]");
+
+            let mut debug_u: Vec<u8> = Vec::new();
+            g.derive(&mut debug_u);
+            assert!(s == debug_u, "The constructed grammar is incorrect.");
+            println!("Grammar       : OK");
+
+            let mut debug_g: Grammar = Grammar::new();
+            encode::decode(&bv, &mut debug_g);
+            debug_u = Vec::new();
+            debug_g.derive(&mut debug_u);
+            assert!(s == debug_u, "The encoding method is bugged.");
+            println!("Encoding      : OK");
         //}}}
+        }
 
     }
 
@@ -98,7 +115,7 @@ fn main() {
         println!("{}.{:03} sec elapsed", end.as_secs(), end.subsec_nanos()/1_000_000);
 
         // write
-        let mut f = BufWriter::new(File::create(matches.value_of("input").unwrap().to_owned()+".d").unwrap());
+        let mut f = BufWriter::new(File::create(matches.value_of("input").unwrap().to_owned()+".dcp").unwrap());
         f.write(&u).unwrap();
     }
     else {

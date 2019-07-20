@@ -25,7 +25,7 @@ fn main() {
         .arg(Arg::from_usage("-i --input [FILE] 'Input sourse file'").required(true))
         .arg(Arg::from_usage("-m --minfreq [INTEGER] 'Sets minimum frequency of pairing operation'").default_value("2"))
         .arg(Arg::from_usage("-e --encode [MODE] 'Sets encoding mode'")
-             .possible_values(&["32bit", "FBLE", "Huffman_coding", "PS+PGE", "POPPT+IFBLE", "POPPT+PGE"])
+             .possible_values(&["32bit", "FBLE", "Huffman_coding", "PS+PGE", "POPPT+IBLE", "POPPT+PGE"])
              .default_value("PS+PGE"))
         .arg(Arg::from_usage("-p --print 'Prints the detail of constructed grammar'"))
         .arg(Arg::from_usage("--debug 'Debug mode'"));

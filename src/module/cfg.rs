@@ -59,13 +59,6 @@ impl Grammar {
             p.bit.push(true);
             var += 1;
         }
-
-        // println!("p: {:?}", p);
-        // for c in &self.sequence {
-        //     dfs(*c as usize, &self.terminal, &self.rule, p, &mut m, &mut var);
-        // }
-        // for _ in &self.sequence {p.bit.push(false);}
-        // p.bit.push(true);
     }
 }
 

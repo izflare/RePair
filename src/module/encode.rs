@@ -5,6 +5,7 @@ pub mod text_32bit;
 pub mod text_fble;
 pub mod text_huffman_coding;
 pub mod ps_pge;
+pub mod poppt_ible;
 pub mod poppt_pge;
 
 use bit_vec::BitVec;
@@ -36,9 +37,9 @@ pub fn encode(g: &Grammar, mode: &str, bv: &mut BitVec) -> () {
         fble::to_bv(3, 8, bv);
         encode::ps_pge::encode(g, bv);
     }
-    else if mode == "POPPT+IFBLE" {
+    else if mode == "POPPT+IBLE" {
         fble::to_bv(4, 8, bv);
-        // encode::sorting::encode(g, bv);
+        encode::poppt_ible::encode(g, bv);
     }
     else if mode == "POPPT+PGE" {
         fble::to_bv(5, 8, bv);
@@ -77,8 +78,8 @@ pub fn decode(bv: &BitVec, g: &mut Grammar) -> () {
         encode::ps_pge::decode(bv, g);
     }
     else if mode_number == 4 {
-        mode = "POPPT+IFBLE";
-        // encode::sorting::decode(bv, g);
+        mode = "POPPT+IBLE";
+        encode::poppt_ible::decode(bv, g);
     }
     else if mode_number == 5 {
         mode = "POPPT+PGE";

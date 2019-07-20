@@ -5,6 +5,7 @@ pub mod text_32bit;
 pub mod text_fble;
 pub mod text_huffman_coding;
 pub mod ps_pge;
+pub mod poppt_pge;
 
 use bit_vec::BitVec;
 use std::time::Instant;
@@ -41,7 +42,7 @@ pub fn encode(g: &Grammar, mode: &str, bv: &mut BitVec) -> () {
     }
     else if mode == "POPPT+PGE" {
         fble::to_bv(5, 8, bv);
-        // encode::sorting::encode(g, bv);
+        encode::poppt_pge::encode(g, bv);
     }
     else {panic!("encoding mode error");}
 
@@ -81,9 +82,8 @@ pub fn decode(bv: &BitVec, g: &mut Grammar) -> () {
     }
     else if mode_number == 5 {
         mode = "POPPT+PGE";
-        // encode::sorting::decode(bv, g);
+        encode::poppt_pge::decode(bv, g);
     }
-    // else {panic!("encoding mode error");}
 
     println!("Encoding mode : {}", mode);
 

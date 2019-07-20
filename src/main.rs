@@ -71,7 +71,7 @@ fn main() {
         println!("Input data           : {:?} [bytes]", s.len());
         println!("Compressed data      : {:?} [bytes]", bv.len() / 8 + if bv.len() % 8 > 0 {1} else {0});
         println!("Compression ratio    : {:.3} [%]", 100.0 * bv.len() as f64 / 8.0 / s.len() as f64);
-        if matches.is_present("p") {
+        if matches.is_present("print") {
             println!("\n[Grammar detail]");
             println!("Alphabet   :\n {:?}", g.terminal);
             println!("Dictionary :\n {:?}", g.rule);

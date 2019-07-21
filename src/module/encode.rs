@@ -14,7 +14,7 @@ use strlib::fble;
 use crate::module::{cfg::*};
 use super::encode;
 
-pub fn encode(g: &Grammar, mode: &str, bv: &mut BitVec) -> () {
+pub fn encode(g: &Grammar, mode: &str, bv: &mut BitVec, blocksize: u32) -> () {
 
     println!("[Bit encoding]");
     println!("Encoding mode        : {}", mode);
@@ -35,7 +35,7 @@ pub fn encode(g: &Grammar, mode: &str, bv: &mut BitVec) -> () {
     }
     else if mode == "PS+PGE" {
         fble::to_bv(3, 8, bv);
-        encode::ps_pge::encode(g, bv);
+        encode::ps_pge::encode(g, bv, blocksize);
     }
     else if mode == "POPPT+IBLE" {
         fble::to_bv(4, 8, bv);
@@ -43,7 +43,7 @@ pub fn encode(g: &Grammar, mode: &str, bv: &mut BitVec) -> () {
     }
     else if mode == "POPPT+PGE" {
         fble::to_bv(5, 8, bv);
-        encode::poppt_pge::encode(g, bv);
+        encode::poppt_pge::encode(g, bv, blocksize);
     }
     else {panic!("encoding mode error");}
 

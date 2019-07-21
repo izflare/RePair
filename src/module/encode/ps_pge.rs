@@ -6,7 +6,7 @@ use std::cmp::{min, max};
 use strlib::{fble, packed_gamma};
 use super::super::{cfg::*};
 
-pub fn encode(g: &Grammar, bv: &mut BitVec) -> () {
+pub fn encode(g: &Grammar, bv: &mut BitVec, blocksize: u32) -> () {
 
     let mut deltas: Vec<u32> = Vec::new();
     let mut starting_values: Vec<u32> = Vec::new();
@@ -39,7 +39,7 @@ pub fn encode(g: &Grammar, bv: &mut BitVec) -> () {
     for b in &z {bv.push(b);}
 
     let mut v: Vec<u32> = Vec::new();
-    let blocksize = 6;
+    // let blocksize = 6;
     v.push(deltas.len() as u32);
     v.push(starting_values.len() as u32);
     for e in &deltas {v.push(*e);}
@@ -58,6 +58,7 @@ pub fn encode(g: &Grammar, bv: &mut BitVec) -> () {
     packed_gamma::encode(&g.sequence, blocksize, bv);
 
     println!("Increasing sequences : {:?}", starting_points.len());
+    println!("Block size           : {:?}", blocksize);
 }
 
 pub fn decode(bv: &BitVec, g: &mut Grammar) -> () {
